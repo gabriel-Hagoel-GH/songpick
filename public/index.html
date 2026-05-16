@@ -919,7 +919,7 @@ async function hostPlayClip() {
   const posMs = Math.floor((song.durationMs || 180000) / 4); // start at 25% for variety
   const res = await spotifyPlay(song.uri, posMs);
 
-  if (res && (res.status === 404 || res.status === 204)) {
+  if (res && res.status === 404) {
     document.getElementById('hostOpenSpotify').style.display = 'block';
     document.getElementById('hostPlayBtn').disabled = false;
     document.getElementById('hostPlayBtn').textContent = '▶ Play Song';
