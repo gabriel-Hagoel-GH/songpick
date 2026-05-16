@@ -167,7 +167,7 @@ function scorePicks(room) {
   const correct = room.currentOptions.find(o => o.isCorrect);
   if (!correct) return;
   const correctIdx = room.currentOptions.indexOf(correct);
-  const players = Object.values(room.players).filter(p => !p.isHost);
+  const players = Object.values(room.players); // host can pick too
 
   // Score correct pickers — randomise order (all submitted at same moment)
   const winners = shuffle(players.filter(p => p.pick === correctIdx));
@@ -273,7 +273,7 @@ io.on('connection', socket => {
     const room = getRoomOf(socket.id);
     if (!room || room.phase !== 'playing') return;
     const player = room.players[socket.id];
-    if (!player || player.isHost) return;
+    if (!player) return;
     player.pick = optionIdx;
   });
 
