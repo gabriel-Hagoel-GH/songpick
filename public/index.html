@@ -370,7 +370,11 @@ input::placeholder{color:var(--muted)}
 
     <button class="btn" id="hostPlayBtn" onclick="hostPlayClip()" style="margin-bottom:.4rem">▶ Play Song</button>
 
-    <!-- Who's picked indicator -->
+    <!-- Correct answer shown to host only -->
+    <div id="hostCorrectAnswer" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:var(--rad-sm);padding:.5rem .85rem;font-size:.8rem;color:var(--green);text-align:center;margin-bottom:.4rem;font-weight:500"></div>
+
+    <!-- Host tile grid — same tiles as players, correct one highlighted -->
+    <div class="tile-grid" id="hostTileGrid" style="margin-bottom:.4rem"></div>
     <div class="card" style="padding:.65rem .85rem;margin-bottom:.4rem;flex:1;min-height:0;overflow-y:auto">
       <span class="lbl">Players</span>
       <div id="hostPlayerStatus"></div>
@@ -644,7 +648,12 @@ function connectSocket() {
     currentSongIdx = 0;
     currentOptions = options;
     myPickIdx = null;
-    isHost ? initHostGame() : initPlayerGame(options);
+    if (isHost) {
+      initHostGame();
+    } else {
+      initPlayerGame(options);
+      // Tiles are visible but disabled — enabled when song_playing arrives
+    }
   });
 
   socket.on('song_playing', () => {
@@ -716,7 +725,11 @@ function connectSocket() {
     roundCount = rc;
     currentOptions = options;
     myPickIdx = null;
-    isHost ? initHostGame() : initPlayerGame(options);
+    if (isHost) {
+      initHostGame();
+    } else {
+      initPlayerGame(options);
+    }
   });
 
   socket.on('game_over',    ({ players }) => { stopClientTimer(); spotifyPause(); showGameOver(players); });
@@ -907,6 +920,16 @@ function initHostGame() {
   document.getElementById('hostStatusPill').textContent = 'Click ▶ Play to start the round';
   document.getElementById('hostStatusPill').className = 'pill purple';
   updateHostTimer(ROUND_DURATION, ROUND_DURATION);
+  // Render tiles for host — correct tile glows green so host knows what's playing
+  renderHostTiles(currentOptions);
+  // Show correct answer text too
+  if (currentOptions.length) {
+    const correct = currentOptions.find(o => o.isCorrect);
+    if (correct) {
+      document.getElementById('hostCorrectAnswer').textContent = `🎵 ${correct.title} — ${correct.artist}`;
+      document.getElementById('hostCorrectAnswer').style.display = 'block';
+    }
+  }
 }
 
 async function hostPlayClip() {
@@ -972,6 +995,18 @@ function initPlayerGame(options) {
   document.getElementById('playerPickedMsg').style.display = 'none';
   updatePlayerTimer(ROUND_DURATION, ROUND_DURATION);
   renderTiles(options, false);
+}
+
+function renderHostTiles(options) {
+  const grid = document.getElementById('hostTileGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  options.forEach((opt, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile disabled' + (opt.isCorrect ? ' correct' : '');
+    tile.innerHTML = `<div class="tile-title">${esc(opt.title)}</div><div class="tile-artist">${esc(opt.artist)}</div>`;
+    grid.appendChild(tile);
+  });
 }
 
 function renderTiles(options, enabled) {
@@ -1049,6 +1084,7 @@ function startClientTimer(duration, endTime) {
       fired = true;
       stopClientTimer();
       if (isHost) {
+        spotifyPause(); // stop the music when time is up
         document.getElementById('hostWave').classList.add('off');
         document.getElementById('hostStatusPill').textContent = "⏱ Time's up!";
         document.getElementById('hostStatusPill').className = 'pill amber';
