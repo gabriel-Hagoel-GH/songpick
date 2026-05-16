@@ -37,7 +37,7 @@ body{background:#000;display:flex;align-items:center;justify-content:center;font
   opacity:.4;pointer-events:none;z-index:0;border-radius:inherit;
 }
 
-.screen{display:none;flex-direction:column;align-items:center;padding:1.25rem;overflow-y:auto;flex:1;position:relative;z-index:1}
+.screen{display:none;flex-direction:column;align-items:center;padding:.85rem .85rem;overflow-y:auto;flex:1;position:relative;z-index:1}
 .screen.active{display:flex}
 
 /* ── Typography ── */
@@ -106,13 +106,13 @@ input::placeholder{color:var(--muted)}
   padding:.12rem .38rem;border-radius:4px;text-transform:uppercase;letter-spacing:.06em}
 
 /* ── Timer ring ── */
-.tring{position:relative;width:88px;height:88px;margin:.3rem auto}
+.tring{position:relative;width:60px;height:60px;margin:.1rem auto}
 .tring svg{transform:rotate(-90deg)}
-.tr-bg{fill:none;stroke:var(--bg3);stroke-width:7}
-.tr-fg{fill:none;stroke:var(--accent2);stroke-width:7;stroke-linecap:round;
-  stroke-dasharray:239;stroke-dashoffset:0;transition:stroke-dashoffset .1s linear,stroke .3s}
+.tr-bg{fill:none;stroke:var(--bg3);stroke-width:6}
+.tr-fg{fill:none;stroke:var(--accent2);stroke-width:6;stroke-linecap:round;
+  stroke-dasharray:163;stroke-dashoffset:0;transition:stroke-dashoffset .1s linear,stroke .3s}
 .tnum{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-family:var(--title-font);font-size:1.7rem;font-weight:700;color:var(--text)}
+  font-family:var(--title-font);font-size:1.2rem;font-weight:700;color:var(--text)}
 
 /* ── Wave ── */
 .wave{display:flex;align-items:center;gap:3px;height:28px;justify-content:center;margin:.2rem auto}
@@ -131,18 +131,18 @@ input::placeholder{color:var(--muted)}
 .pill.amber{background:rgba(245,158,11,.12);color:var(--gold);border:1px solid rgba(245,158,11,.2)}
 
 /* ── Topbar ── */
-.topbar{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
-.song-info{font-size:.7rem;color:var(--muted)}
+.topbar{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem}
+.song-info{font-size:.68rem;color:var(--muted)}
 
 /* ── TILE GRID ── */
 .tile-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;width:100%;margin:.3rem 0;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;width:100%;margin:.2rem 0;
 }
 .tile{
-  background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--rad-tile);
-  padding:.5rem .4rem;cursor:pointer;text-align:center;transition:all .18s;
+  background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;
+  padding:.45rem .35rem;cursor:pointer;text-align:center;transition:all .15s;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  min-height:64px;position:relative;overflow:hidden;user-select:none;
+  min-height:58px;position:relative;overflow:hidden;user-select:none;
 }
 .tile::before{
   content:'';position:absolute;inset:0;
@@ -344,99 +344,97 @@ input::placeholder{color:var(--muted)}
 
   <!-- ══ HOST GAME ══ -->
   <div class="screen" id="sHostGame">
-    <div class="topbar">
-      <div class="song-info">
-        <div id="hostSongCounter" style="font-weight:600;color:var(--text)">Song 1</div>
-        <div id="hostGenreInfo" style="color:var(--muted)"></div>
+    <!-- Compact topbar -->
+    <div style="width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
+      <div>
+        <div id="hostSongCounter" style="font-weight:600;color:var(--text);font-size:.8rem">Song 1</div>
+        <div id="hostGenreInfo" style="color:var(--muted);font-size:.65rem"></div>
+        <div id="hostGameCode" style="color:var(--accent3);font-size:.62rem;letter-spacing:.1em"></div>
       </div>
-      <button class="btn sec sm" style="width:auto" onclick="hostEndGame()">End</button>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div class="wave off" id="hostWave" style="height:20px">
+          <div class="bar" style="height:6px"></div><div class="bar" style="height:14px"></div>
+          <div class="bar" style="height:10px"></div><div class="bar" style="height:18px"></div>
+          <div class="bar" style="height:12px"></div>
+        </div>
+        <div class="tring">
+          <svg viewBox="0 0 60 60" width="60" height="60">
+            <circle class="tr-bg" cx="30" cy="30" r="26"/>
+            <circle class="tr-fg" id="hostTimerRing" cx="30" cy="30" r="26"/>
+          </svg>
+          <div class="tnum" id="hostTimerNum">—</div>
+        </div>
+        <button class="btn sec sm" style="width:auto;padding:.35rem .65rem;font-size:.72rem" onclick="hostEndGame()">End</button>
+      </div>
     </div>
 
-    <div class="tring">
-      <svg viewBox="0 0 88 88" width="88" height="88">
-        <circle class="tr-bg" cx="44" cy="44" r="38"/>
-        <circle class="tr-fg" id="hostTimerRing" cx="44" cy="44" r="38"/>
-      </svg>
-      <div class="tnum" id="hostTimerNum">—</div>
-    </div>
+    <div id="hostStatusPill" class="pill purple" style="margin-bottom:.3rem;align-self:flex-start">Click ▶ Play to start the round</div>
 
-    <div class="wave off" id="hostWave" style="margin-bottom:.3rem">
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-    </div>
-
-    <div id="hostStatusPill" class="pill purple" style="margin-bottom:.5rem">Click ▶ Play to start the round</div>
-
-    <div id="hostOpenSpotify" style="display:none;width:100%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--rad-sm);padding:.5rem .85rem;font-size:.73rem;color:#f87171;text-align:center;margin-bottom:.4rem">
+    <div id="hostOpenSpotify" style="display:none;width:100%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--rad-sm);padding:.4rem .75rem;font-size:.7rem;color:#f87171;text-align:center;margin-bottom:.3rem">
       ⚠️ Open Spotify and play any song first, then click Play
     </div>
 
-    <!-- Play position toggle -->
-    <div style="display:flex;gap:.4rem;margin-bottom:.4rem;width:100%">
-      <button id="posStartBtn" class="btn sec sm active-pos" style="flex:1" onclick="setPlayPosition('start')">▶ From start</button>
-      <button id="posMidBtn"   class="btn sec sm"            style="flex:1" onclick="setPlayPosition('middle')">⏩ From middle</button>
+    <!-- Play position + Play button in one row -->
+    <div style="display:flex;gap:.35rem;width:100%;margin-bottom:.3rem">
+      <button id="posStartBtn" class="btn sec sm active-pos" style="flex:1;font-size:.72rem" onclick="setPlayPosition('start')">▶ Start</button>
+      <button id="posMidBtn"   class="btn sec sm"            style="flex:1;font-size:.72rem" onclick="setPlayPosition('middle')">⏩ Middle</button>
+      <button class="btn sm" id="hostPlayBtn" onclick="hostPlayClip()" style="flex:2">▶ Play</button>
     </div>
 
-    <button class="btn" id="hostPlayBtn" onclick="hostPlayClip()" style="margin-bottom:.4rem">▶ Play Song</button>
+    <!-- Correct answer shown to host -->
+    <div id="hostCorrectAnswer" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:var(--rad-sm);padding:.35rem .75rem;font-size:.75rem;color:var(--green);text-align:center;margin-bottom:.3rem;font-weight:500"></div>
 
-    <!-- Correct answer shown to host only -->
-    <div id="hostCorrectAnswer" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:var(--rad-sm);padding:.5rem .85rem;font-size:.8rem;color:var(--green);text-align:center;margin-bottom:.4rem;font-weight:500"></div>
+    <!-- Host tile grid -->
+    <div class="tile-grid" id="hostTileGrid" style="margin-bottom:.3rem"></div>
 
-    <!-- Host tile grid — same tiles as players, correct one highlighted -->
-    <div class="tile-grid" id="hostTileGrid" style="margin-bottom:.4rem"></div>
-    <div class="card" style="padding:.65rem .85rem;margin-bottom:.4rem;flex:1;min-height:0;overflow-y:auto">
-      <span class="lbl">Players</span>
-      <div id="hostPlayerStatus"></div>
-    </div>
+    <!-- Players status — compact -->
+    <div id="hostPlayerStatus" style="width:100%;margin-top:auto;display:flex;flex-wrap:wrap;gap:.2rem"></div>
 
     <!-- Host decision after no correct guesses -->
-    <div id="hostDecision" style="display:none;width:100%">
-      <div class="decision-panel">
-        <p>⏱ Nobody got it! What next?</p>
-        <div class="row">
-          <button class="btn green" style="flex:1" onclick="hostExtraTime()">▶ +10 seconds</button>
-          <button class="btn red" style="flex:1" onclick="hostForceReveal()">👁 Reveal</button>
-        </div>
+    <div id="hostDecision" style="display:none;width:100%;margin-top:.3rem">
+      <div style="display:flex;gap:.35rem;width:100%">
+        <button class="btn green sm" style="flex:1" onclick="hostExtraTime()">▶ +10s</button>
+        <button class="btn red sm"   style="flex:1" onclick="hostForceReveal()">👁 Reveal</button>
       </div>
     </div>
   </div>
 
   <!-- ══ PLAYER GAME ══ -->
   <div class="screen" id="sPlayerGame">
-    <div class="topbar">
-      <div class="song-info">
-        <div id="playerSongCounter" style="font-weight:600;color:var(--text)">Song 1</div>
+    <!-- Compact topbar: song counter + score + timer + wave all in one row -->
+    <div style="width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
+      <div>
+        <div id="playerSongCounter" style="font-weight:600;color:var(--text);font-size:.8rem">Song 1</div>
+        <div id="myScore" style="font-size:.72rem;font-weight:600;color:var(--accent3)">0 pts</div>
       </div>
-      <div id="myScore" style="font-size:.85rem;font-weight:600;color:var(--accent3)">0 pts</div>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div class="wave off" id="playerWave" style="height:20px">
+          <div class="bar" style="height:6px"></div><div class="bar" style="height:14px"></div>
+          <div class="bar" style="height:10px"></div><div class="bar" style="height:18px"></div>
+          <div class="bar" style="height:12px"></div>
+        </div>
+        <div class="tring">
+          <svg viewBox="0 0 60 60" width="60" height="60">
+            <circle class="tr-bg" cx="30" cy="30" r="26"/>
+            <circle class="tr-fg" id="playerTimerRing" cx="30" cy="30" r="26"/>
+          </svg>
+          <div class="tnum" id="playerTimerNum">—</div>
+        </div>
+      </div>
     </div>
 
-    <div class="tring" style="margin:.1rem auto .2rem">
-      <svg viewBox="0 0 88 88" width="88" height="88">
-        <circle class="tr-bg" cx="44" cy="44" r="38"/>
-        <circle class="tr-fg" id="playerTimerRing" cx="44" cy="44" r="38"/>
-      </svg>
-      <div class="tnum" id="playerTimerNum">—</div>
+    <div id="playerStatusPill" class="pill purple" style="margin-bottom:.3rem;align-self:flex-start">Waiting for host…</div>
+
+    <!-- 12 tiles — main focus -->
+    <div class="tile-grid" id="playerTileGrid"></div>
+
+    <!-- Picked confirmation — minimal -->
+    <div id="playerPickedMsg" style="display:none;font-size:.72rem;color:var(--muted);margin-top:.25rem;text-align:center">
+      ✅ <span id="playerPickedName" style="color:var(--text);font-weight:500"></span>
     </div>
 
-    <div class="wave off" id="playerWave" style="margin-bottom:.2rem">
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-    </div>
-
-    <div id="playerStatusPill" class="pill purple" style="margin-bottom:.4rem">Waiting for host…</div>
-
-    <!-- 12 tiles -->
-    <div class="tile-grid" id="playerTileGrid" style="margin-bottom:.35rem"></div>
-
-    <!-- Selected indicator -->
-    <div id="playerPickedMsg" style="display:none;text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:.3rem">
-      ✅ <span id="playerPickedName" style="color:var(--text);font-weight:500"></span> — locked in. Timer ends → answer revealed.
-    </div>
-
-    <!-- Live status -->
-    <div class="card" style="padding:.5rem .7rem;margin-top:auto">
-      <div id="playerStatusList"></div>
-    </div>
+    <!-- Compact score row at bottom -->
+    <div id="playerStatusList" style="width:100%;margin-top:auto;padding-top:.3rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
   </div>
 
   <!-- ══ REVEAL ══ -->
@@ -672,6 +670,7 @@ function connectSocket() {
       document.getElementById('hostStatusPill').textContent = `🎵 Playing — players are picking!`;
       document.getElementById('hostStatusPill').className = 'pill green';
       document.getElementById('hostPlayBtn').disabled = true;
+      document.getElementById('hostPlayBtn').textContent = 'Playing…';
     } else {
       document.getElementById('playerStatusPill').textContent = '🎵 Listen and pick!';
       document.getElementById('playerStatusPill').className = 'pill green';
@@ -708,18 +707,21 @@ function connectSocket() {
     if (isHost) {
       document.getElementById('hostDecision').style.display = 'none';
       document.getElementById('hostPlayBtn').style.display = 'block';
-      document.getElementById('hostStatusPill').textContent = `+${duration}s — still going!`;
-      document.getElementById('hostStatusPill').className = 'pill green';
-      document.getElementById('hostWave').classList.remove('off');
+      document.getElementById('hostPlayBtn').disabled = false;
+      document.getElementById('hostPlayBtn').textContent = '▶ Play Again (+' + duration + 's)';
+      document.getElementById('hostStatusPill').textContent = `+${duration}s — press Play to continue!`;
+      document.getElementById('hostStatusPill').className = 'pill amber';
+      document.getElementById('hostWave').classList.add('off');
+      // Reset host tile selection
+      document.querySelectorAll('#hostTileGrid .tile').forEach(t => t.classList.remove('selected'));
     } else {
       enableTiles();
       resetTileSelection();
-      document.getElementById('playerStatusPill').textContent = `+${duration}s more — pick now!`;
-      document.getElementById('playerStatusPill').className = 'pill green';
-      document.getElementById('playerWave').classList.remove('off');
+      document.getElementById('playerStatusPill').textContent = `+${duration}s — waiting for host to play…`;
+      document.getElementById('playerStatusPill').className = 'pill amber';
+      document.getElementById('playerWave').classList.add('off');
     }
-    const localEnd = Date.now() + duration * 1000;
-    startClientTimer(duration, localEnd);
+    // Don't start client timer yet — wait for host to click Play → song_playing → timer_start
   });
 
   socket.on('reveal', ({ song, correctIdx, players, isLast }) => {
@@ -921,6 +923,7 @@ function initHostGame() {
   showScreen('sHostGame');
   document.getElementById('hostSongCounter').textContent = `Song ${currentSongIdx+1} of ${roundCount}`;
   document.getElementById('hostGenreInfo').textContent = (israeliMode?'🇮🇱 ':'')+selectedGenres.join(', ');
+  document.getElementById('hostGameCode').textContent = `Room: ${roomCode}`;
   document.getElementById('hostPlayBtn').disabled = false;
   document.getElementById('hostPlayBtn').style.display = 'block';
   document.getElementById('hostPlayBtn').textContent = '▶ Play Song';
@@ -980,15 +983,12 @@ function hostEndGame()      { if (!confirm('End the game?')) return; stopClientT
 function updateHostPlayerStatus(players) {
   const c = document.getElementById('hostPlayerStatus'); if (!c) return; c.innerHTML = '';
   players.forEach(p => {
-    const d = document.createElement('div');
-    d.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.22rem 0;font-size:.8rem';
-    const status = p.correct === true
-      ? `<span style="color:var(--green);font-size:.72rem">✓ #${p.finishPosition} +${[10,8,6,4,2,1][Math.min(p.finishPosition-1,5)]}pts</span>`
-      : p.correct === false
-      ? `<span style="color:var(--red);font-size:.72rem">✗ wrong</span>`
-      : `<span style="color:var(--muted);font-size:.72rem">picking…</span>`;
-    d.innerHTML = `<span>${esc(p.name)}</span>${status}`;
-    c.appendChild(d);
+    const chip = document.createElement('div');
+    const col = p.correct === true ? 'var(--green)' : p.correct === false ? 'var(--red)' : 'var(--border)';
+    const pts = p.correct === true ? `+${[10,8,6,4,2,1][Math.min((p.finishPosition||1)-1,5)]}` : '';
+    chip.style.cssText = `display:inline-flex;align-items:center;gap:.25rem;padding:.18rem .45rem;border-radius:999px;border:1px solid ${col};font-size:.68rem`;
+    chip.innerHTML = `<span style="color:var(--text)">${esc(p.name)}</span>${pts?`<span style="color:var(--green);font-size:.65rem">${pts}</span>`:''}`;
+    c.appendChild(chip);
   });
 }
 
@@ -1087,15 +1087,11 @@ function highlightTiles(correctIdx) {
 function updatePlayerStatusList(players) {
   const c = document.getElementById('playerStatusList'); if (!c) return; c.innerHTML = '';
   players.filter(p => !p.isHost).forEach(p => {
-    const d = document.createElement('div');
-    d.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.18rem 0;font-size:.78rem';
-    const status = p.correct === true
-      ? `<span style="color:var(--green)">✓</span>`
-      : p.correct === false
-      ? `<span style="color:var(--red)">✗</span>`
-      : `<span style="color:var(--muted)">…</span>`;
-    d.innerHTML = `<span>${esc(p.name)}</span><span style="color:var(--accent3);font-size:.75rem">${p.score||0}pts ${status}</span>`;
-    c.appendChild(d);
+    const chip = document.createElement('div');
+    const col = p.correct === true ? 'var(--green)' : p.correct === false ? 'var(--red)' : 'var(--border)';
+    chip.style.cssText = `display:inline-flex;align-items:center;gap:.25rem;padding:.18rem .45rem;border-radius:999px;border:1px solid ${col};font-size:.68rem;background:transparent`;
+    chip.innerHTML = `<span style="color:var(--text)">${esc(p.name)}</span><span style="color:var(--accent3);font-size:.65rem">${p.score||0}pt</span>`;
+    c.appendChild(chip);
   });
   const me = players.find(p => p.id === myId);
   if (me) document.getElementById('myScore').textContent = (me.score||0)+' pts';
@@ -1132,14 +1128,14 @@ function stopClientTimer() { if (timerInterval) { clearInterval(timerInterval); 
 
 function updateHostTimer(val, max) {
   const el = document.getElementById('hostTimerRing'); if (!el) return;
-  const circumference = 239;
+  const circumference = 163;
   el.style.strokeDashoffset = (val/max) * circumference;
   el.style.stroke = val<=5?'var(--red)':val<=10?'var(--gold)':'var(--accent2)';
   document.getElementById('hostTimerNum').textContent = val;
 }
 function updatePlayerTimer(val, max) {
   const el = document.getElementById('playerTimerRing'); if (!el) return;
-  const circumference = 239;
+  const circumference = 163;
   el.style.strokeDashoffset = (val/max) * circumference;
   el.style.stroke = val<=5?'var(--red)':val<=10?'var(--gold)':'var(--accent2)';
   document.getElementById('playerTimerNum').textContent = val;
