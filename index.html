@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0a0a0f"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Song-Pick"/>
+<link rel="manifest" href="manifest.json"/>
+<title>Song-Pick</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a26;
+  --accent:#7c3aed;--accent2:#a855f7;--accent3:#c084fc;
+  --green:#22c55e;--red:#ef4444;--gold:#f59e0b;
+  --text:#f0f0ff;--muted:#6b6b8a;--border:#2a2a3a;
+  --rad:14px;--rad-sm:8px;--rad-tile:12px;
+  --title-font:'Syne',sans-serif;--body-font:'DM Sans',sans-serif;
+  --shadow:0 20px 60px rgba(0,0,0,.8);
+}
+html,body{height:100%;overflow:hidden}
+body{background:#000;display:flex;align-items:center;justify-content:center;font-family:var(--body-font);color:var(--text)}
+
+#app{
+  background:var(--bg);width:100%;max-width:480px;height:100vh;max-height:860px;
+  overflow:hidden;display:flex;flex-direction:column;position:relative;
+}
+@media(min-width:500px){#app{border-radius:20px;height:95vh;box-shadow:var(--shadow)}}
+
+/* noise texture overlay */
+#app::before{
+  content:'';position:absolute;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.03'/%3E%3C/svg%3E");
+  opacity:.4;pointer-events:none;z-index:0;border-radius:inherit;
+}
+
+.screen{display:none;flex-direction:column;align-items:center;padding:1.25rem;overflow-y:auto;flex:1;position:relative;z-index:1}
+.screen.active{display:flex}
+
+/* ── Typography ── */
+h1{font-family:var(--title-font);font-size:2.8rem;font-weight:800;letter-spacing:-1px;
+   background:linear-gradient(135deg,var(--accent2),var(--accent3),#fff);
+   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+h2{font-family:var(--title-font);font-size:1.7rem;font-weight:700;color:var(--text)}
+h3{font-family:var(--title-font);font-size:1.2rem;color:var(--text)}
+.sub{color:var(--muted);font-size:.83rem;text-align:center;line-height:1.6;margin-bottom:.75rem}
+.ver{font-size:.6rem;color:#333;letter-spacing:.12em;margin-bottom:.4rem;font-family:var(--title-font)}
+
+/* ── Cards ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rad);padding:1rem;margin-bottom:.65rem;width:100%}
+
+/* ── Labels ── */
+.lbl{font-size:.65rem;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+
+/* ── Inputs ── */
+input[type=text]{
+  width:100%;background:var(--bg3);border:1.5px solid var(--border);
+  color:var(--text);padding:.6rem .85rem;border-radius:var(--rad-sm);
+  font-family:var(--body-font);font-size:1rem;outline:none;transition:border-color .15s
+}
+input:focus{border-color:var(--accent2)}
+input::placeholder{color:var(--muted)}
+
+/* ── Buttons ── */
+.btn{
+  background:var(--accent);color:#fff;border:none;padding:.7rem 1.4rem;
+  border-radius:999px;font-family:var(--title-font);font-size:.95rem;font-weight:600;
+  letter-spacing:.03em;cursor:pointer;transition:all .15s;
+  display:inline-flex;align-items:center;justify-content:center;gap:.4rem;width:100%
+}
+.btn:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn:active{transform:scale(.96)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn.sec{background:var(--bg3);color:var(--text);border:1.5px solid var(--border)}
+.btn.sec:hover{border-color:var(--accent2);background:var(--bg2)}
+.btn.green{background:var(--green);color:#000}
+.btn.red{background:var(--red)}
+.btn.sm{font-size:.78rem;padding:.5rem 1rem}
+
+/* ── Row ── */
+.row{display:flex;gap:.5rem;width:100%}
+
+/* ── Pick grid ── */
+.pgrid{display:grid;gap:.3rem;width:100%;margin-bottom:.5rem}
+.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.pick{background:var(--bg3);border:1.5px solid var(--border);color:var(--muted);
+  padding:.4rem .2rem;border-radius:6px;font-size:.72rem;cursor:pointer;text-align:center;
+  transition:all .15s;font-family:var(--body-font)}
+.pick.on{background:rgba(124,58,237,.18);border-color:var(--accent2);color:var(--accent3)}
+
+/* ── Room code ── */
+.room-code{font-family:var(--title-font);font-size:3.5rem;font-weight:800;letter-spacing:10px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent3));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-align:center;line-height:1}
+
+/* ── Player list ── */
+.player-row{display:flex;align-items:center;justify-content:space-between;
+  padding:.45rem .7rem;background:var(--bg3);border-radius:var(--rad-sm);margin-bottom:.25rem}
+.player-row .name{font-size:.88rem;display:flex;align-items:center;gap:.35rem}
+.player-row .pts{font-weight:600;color:var(--accent3);font-size:.88rem}
+.host-badge{font-size:.58rem;background:rgba(124,58,237,.25);color:var(--accent3);
+  padding:.12rem .38rem;border-radius:4px;text-transform:uppercase;letter-spacing:.06em}
+
+/* ── Timer ring ── */
+.tring{position:relative;width:88px;height:88px;margin:.3rem auto}
+.tring svg{transform:rotate(-90deg)}
+.tr-bg{fill:none;stroke:var(--bg3);stroke-width:7}
+.tr-fg{fill:none;stroke:var(--accent2);stroke-width:7;stroke-linecap:round;
+  stroke-dasharray:239;stroke-dashoffset:0;transition:stroke-dashoffset .1s linear,stroke .3s}
+.tnum{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--title-font);font-size:1.7rem;font-weight:700;color:var(--text)}
+
+/* ── Wave ── */
+.wave{display:flex;align-items:center;gap:3px;height:28px;justify-content:center;margin:.2rem auto}
+.bar{width:4px;background:var(--accent2);border-radius:2px;min-height:3px;animation:wv .9s ease-in-out infinite}
+.bar:nth-child(1){height:9px;animation-delay:0s}.bar:nth-child(2){height:22px;animation-delay:.08s}
+.bar:nth-child(3){height:14px;animation-delay:.16s}.bar:nth-child(4){height:26px;animation-delay:.24s}
+.bar:nth-child(5){height:17px;animation-delay:.32s}.bar:nth-child(6){height:11px;animation-delay:.4s}
+.bar:nth-child(7){height:20px;animation-delay:.48s}
+@keyframes wv{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.18)}}
+.wave.off .bar{animation:none;height:3px;opacity:.25}
+
+/* ── Pill ── */
+.pill{display:inline-block;padding:.2rem .8rem;border-radius:999px;font-size:.7rem;font-weight:600;letter-spacing:.03em}
+.pill.purple{background:rgba(124,58,237,.2);color:var(--accent3);border:1px solid rgba(124,58,237,.3)}
+.pill.green{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.pill.amber{background:rgba(245,158,11,.12);color:var(--gold);border:1px solid rgba(245,158,11,.2)}
+
+/* ── Topbar ── */
+.topbar{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
+.song-info{font-size:.7rem;color:var(--muted)}
+
+/* ── TILE GRID ── */
+.tile-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;width:100%;margin:.3rem 0;
+}
+.tile{
+  background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--rad-tile);
+  padding:.5rem .4rem;cursor:pointer;text-align:center;transition:all .18s;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:64px;position:relative;overflow:hidden;user-select:none;
+}
+.tile::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(124,58,237,.08),transparent);
+  opacity:0;transition:opacity .2s;
+}
+.tile:hover::before{opacity:1}
+.tile:active{transform:scale(.95)}
+.tile.selected{
+  border-color:var(--accent2);background:rgba(124,58,237,.18);
+  box-shadow:0 0 0 2px rgba(124,58,237,.3);
+}
+.tile.selected::before{opacity:1}
+.tile.correct{
+  border-color:var(--green);background:rgba(34,197,94,.18);
+  box-shadow:0 0 0 2px rgba(34,197,94,.3);animation:correctPop .4s ease-out;
+}
+.tile.wrong{
+  border-color:var(--red);background:rgba(239,68,68,.12);opacity:.6;
+}
+.tile.disabled{cursor:default;pointer-events:none}
+@keyframes correctPop{0%{transform:scale(.94)}60%{transform:scale(1.05)}100%{transform:scale(1)}}
+.tile-title{font-size:.7rem;font-weight:600;color:var(--text);line-height:1.3;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:.15rem}
+.tile-artist{font-size:.58rem;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;width:100%}
+
+/* ── Reveal ── */
+.rbox{background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(168,85,247,.06));
+  border:1px solid rgba(124,58,237,.3);border-radius:var(--rad);padding:1.1rem;text-align:center;width:100%}
+.rtitle{font-family:var(--title-font);font-size:1.7rem;font-weight:700;
+  background:linear-gradient(135deg,var(--accent2),var(--accent3));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  line-height:1.2;margin-bottom:.2rem}
+.rartist{color:var(--muted);font-size:.85rem}
+
+/* ── Album art ── */
+.album-reveal{width:80px;height:80px;border-radius:10px;margin:0 auto .65rem;overflow:hidden;
+  background:var(--bg3);box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.album-reveal img{width:100%;height:100%;object-fit:cover}
+
+/* ── Score flash ── */
+.pts-flash{font-family:var(--title-font);font-size:3rem;font-weight:800;
+  background:linear-gradient(135deg,var(--gold),#fbbf24);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-align:center;animation:ptsIn .4s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes ptsIn{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+
+/* ── Winner ── */
+.winner-name{font-family:var(--title-font);font-size:2.2rem;font-weight:800;
+  background:linear-gradient(135deg,var(--gold),#fbbf24);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-align:center;animation:ptsIn .5s ease-out}
+
+/* ── Waiting ── */
+.waiting-dots::after{content:'';animation:dots 1.2s steps(3,end) infinite}
+@keyframes dots{0%,100%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--bg2);border:1px solid var(--border);border-radius:999px;
+  padding:.45rem 1.1rem;font-size:.82rem;color:var(--text);transition:transform .3s;z-index:200;white-space:nowrap}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── Loading overlay ── */
+#loadingOverlay{display:none;position:absolute;inset:0;background:rgba(10,10,15,.88);z-index:100;
+  align-items:center;justify-content:center;flex-direction:column;gap:1rem}
+#loadingOverlay.show{display:flex}
+.spinner{width:34px;height:34px;border:3px solid var(--bg3);border-top-color:var(--accent2);
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Round buttons ── */
+.round-btn{padding:.38rem .7rem;font-size:.8rem;width:auto}
+.round-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* ── Divider ── */
+.divider{width:100%;height:1px;background:var(--border);margin:.6rem 0}
+
+/* ── Error ── */
+.err{color:#f87171;font-size:.76rem;text-align:center;min-height:1em;margin:.2rem 0}
+
+/* ── Host decision panel ── */
+.decision-panel{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--rad);
+  padding:1rem;text-align:center;width:100%;
+}
+.decision-panel p{color:var(--muted);font-size:.85rem;margin-bottom:.75rem}
+
+/* ── Confetti ── */
+.confetti-piece{position:fixed;width:7px;height:7px;border-radius:2px;
+  animation:confettiFall 1.3s ease-out forwards;pointer-events:none;z-index:999}
+@keyframes confettiFall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <p style="color:var(--muted);font-size:.82rem" id="loadingMsg">Loading…</p>
+</div>
+
+<div id="app">
+
+  <!-- ══ HOME ══ -->
+  <div class="screen active" id="sHome">
+    <div style="margin:auto;text-align:center;width:100%">
+      <div style="font-size:4rem;margin-bottom:.15rem">🎵</div>
+      <h1>Song-Pick</h1>
+      <div class="ver">v1.0 · multiplayer</div>
+      <p class="sub">Hear the song. Pick the right tile.<br>First to answer scores most.</p>
+      <div class="card" style="margin-bottom:.6rem">
+        <span class="lbl">Your name</span>
+        <input type="text" id="nameInput" placeholder="Enter your name…" maxlength="16"/>
+      </div>
+      <button class="btn" style="margin-bottom:.45rem" onclick="goCreate()">🎮 Create Game</button>
+      <button class="btn sec" onclick="goJoin()">🔑 Join Game</button>
+      <p style="font-size:.68rem;color:#333;margin-top:1.2rem;line-height:1.8">
+        Host needs Spotify Premium · Players need nothing<br>
+        <span id="spotifyStatus" style="color:var(--green)"></span>
+      </p>
+    </div>
+  </div>
+
+  <!-- ══ JOIN ══ -->
+  <div class="screen" id="sJoin">
+    <div style="margin:auto;text-align:center;width:100%">
+      <h2 style="margin-bottom:.2rem">Join Game</h2>
+      <p class="sub">Enter the room code from the host</p>
+      <div class="card">
+        <span class="lbl">Room Code</span>
+        <input type="text" id="codeInput" placeholder="e.g. AB12" maxlength="4"
+          style="text-align:center;font-size:1.8rem;letter-spacing:.3em;text-transform:uppercase"/>
+      </div>
+      <button class="btn" onclick="joinRoom()" style="margin-bottom:.45rem">Join Room</button>
+      <button class="btn sec" onclick="showScreen('sHome')">← Back</button>
+      <div class="err" id="joinErr"></div>
+    </div>
+  </div>
+
+  <!-- ══ LOBBY (HOST) ══ -->
+  <div class="screen" id="sLobby">
+    <h2 style="margin-bottom:.1rem">Game Lobby</h2>
+    <p class="sub" style="margin-bottom:.4rem">Share this code:</p>
+    <div class="room-code" id="lobbyCode" style="cursor:pointer" onclick="copyCode()" title="Tap to copy">----</div>
+    <p style="font-size:.68rem;color:var(--muted);margin:.25rem 0 .75rem">Tap to copy</p>
+    <div class="card">
+      <span class="lbl">Players (<span id="playerCount">1</span>)</span>
+      <div id="lobbyPlayers"></div>
+    </div>
+    <div class="card" id="hostConfig">
+      <span class="lbl" style="margin-bottom:.4rem">Genre</span>
+      <div class="pgrid g3" id="genreGrid"></div>
+      <span class="lbl" style="margin-bottom:.4rem">Decade(s)</span>
+      <div class="pgrid g4" id="decadeGrid"></div>
+      <div class="divider" style="margin:.4rem 0"></div>
+      <span class="lbl">Rounds</span>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.25rem" id="roundBtns"></div>
+    </div>
+    <div class="err" id="lobbyErr"></div>
+    <button class="btn" id="startGameBtn" onclick="hostStartGame()">Start Game ▶</button>
+    <button class="btn sec" style="margin-top:.4rem;font-size:.78rem" onclick="leaveRoom()">Leave Room</button>
+  </div>
+
+  <!-- ══ LOBBY (PLAYER) ══ -->
+  <div class="screen" id="sPlayerLobby">
+    <div style="margin:auto;text-align:center;width:100%">
+      <h2 style="margin-bottom:.2rem">Waiting for host</h2>
+      <div class="waiting-dots" id="playerLobbyStatus" style="color:var(--muted);font-size:.83rem;margin-bottom:.75rem">Waiting</div>
+      <div style="font-size:.72rem;color:#444;margin-bottom:.75rem">Room: <span id="playerRoomCode" style="color:var(--accent3);letter-spacing:.15em"></span></div>
+      <div class="card">
+        <span class="lbl">Players</span>
+        <div id="playerLobbyList"></div>
+      </div>
+      <button class="btn sec" style="margin-top:.4rem;font-size:.78rem" onclick="leaveRoom()">Leave Room</button>
+    </div>
+  </div>
+
+  <!-- ══ SPOTIFY LOGIN ══ -->
+  <div class="screen" id="sSpotify">
+    <div style="margin:auto;text-align:center;width:100%">
+      <div style="font-size:3rem;margin-bottom:.4rem">🎵</div>
+      <h2 style="margin-bottom:.2rem">Connect Spotify</h2>
+      <p class="sub">As the host, connect your Spotify Premium account.<br>Players don't need Spotify.</p>
+      <button class="btn" onclick="loginSpotify()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+        Login with Spotify
+      </button>
+      <div class="err" id="spotifyErr" style="margin-top:.5rem"></div>
+    </div>
+  </div>
+
+  <!-- ══ HOST GAME ══ -->
+  <div class="screen" id="sHostGame">
+    <div class="topbar">
+      <div class="song-info">
+        <div id="hostSongCounter" style="font-weight:600;color:var(--text)">Song 1</div>
+        <div id="hostGenreInfo" style="color:var(--muted)"></div>
+      </div>
+      <button class="btn sec sm" style="width:auto" onclick="hostEndGame()">End</button>
+    </div>
+
+    <div class="tring">
+      <svg viewBox="0 0 88 88" width="88" height="88">
+        <circle class="tr-bg" cx="44" cy="44" r="38"/>
+        <circle class="tr-fg" id="hostTimerRing" cx="44" cy="44" r="38"/>
+      </svg>
+      <div class="tnum" id="hostTimerNum">—</div>
+    </div>
+
+    <div class="wave off" id="hostWave" style="margin-bottom:.3rem">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+
+    <div id="hostStatusPill" class="pill purple" style="margin-bottom:.5rem">Click ▶ Play to start the round</div>
+
+    <div id="hostOpenSpotify" style="display:none;width:100%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--rad-sm);padding:.5rem .85rem;font-size:.73rem;color:#f87171;text-align:center;margin-bottom:.4rem">
+      ⚠️ Open Spotify and play any song first, then click Play
+    </div>
+
+    <button class="btn" id="hostPlayBtn" onclick="hostPlayClip()" style="margin-bottom:.4rem">▶ Play Song</button>
+
+    <!-- Who's picked indicator -->
+    <div class="card" style="padding:.65rem .85rem;margin-bottom:.4rem;flex:1;min-height:0;overflow-y:auto">
+      <span class="lbl">Players</span>
+      <div id="hostPlayerStatus"></div>
+    </div>
+
+    <!-- Host decision after no correct guesses -->
+    <div id="hostDecision" style="display:none;width:100%">
+      <div class="decision-panel">
+        <p>⏱ Nobody got it! What next?</p>
+        <div class="row">
+          <button class="btn green" style="flex:1" onclick="hostExtraTime()">▶ +10 seconds</button>
+          <button class="btn red" style="flex:1" onclick="hostForceReveal()">👁 Reveal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PLAYER GAME ══ -->
+  <div class="screen" id="sPlayerGame">
+    <div class="topbar">
+      <div class="song-info">
+        <div id="playerSongCounter" style="font-weight:600;color:var(--text)">Song 1</div>
+      </div>
+      <div id="myScore" style="font-size:.85rem;font-weight:600;color:var(--accent3)">0 pts</div>
+    </div>
+
+    <div class="tring" style="margin:.1rem auto .2rem">
+      <svg viewBox="0 0 88 88" width="88" height="88">
+        <circle class="tr-bg" cx="44" cy="44" r="38"/>
+        <circle class="tr-fg" id="playerTimerRing" cx="44" cy="44" r="38"/>
+      </svg>
+      <div class="tnum" id="playerTimerNum">—</div>
+    </div>
+
+    <div class="wave off" id="playerWave" style="margin-bottom:.2rem">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+
+    <div id="playerStatusPill" class="pill purple" style="margin-bottom:.4rem">Waiting for host…</div>
+
+    <!-- 12 tiles -->
+    <div class="tile-grid" id="playerTileGrid" style="margin-bottom:.35rem"></div>
+
+    <!-- Selected indicator -->
+    <div id="playerPickedMsg" style="display:none;text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:.3rem">
+      ✅ <span id="playerPickedName" style="color:var(--text);font-weight:500"></span> — locked in. Timer ends → answer revealed.
+    </div>
+
+    <!-- Live status -->
+    <div class="card" style="padding:.5rem .7rem;margin-top:auto">
+      <div id="playerStatusList"></div>
+    </div>
+  </div>
+
+  <!-- ══ REVEAL ══ -->
+  <div class="screen" id="sReveal">
+    <h2 style="margin-bottom:.15rem" id="revealHead">Round over!</h2>
+    <p class="sub" id="revealSub" style="margin-bottom:.6rem"></p>
+
+    <div class="album-reveal" id="revealArt" style="display:none">
+      <img id="revealImg" src="" alt=""/>
+    </div>
+
+    <div class="rbox" style="margin-bottom:.6rem">
+      <div class="rtitle" id="revealSong"></div>
+      <div class="rartist" id="revealArtist"></div>
+    </div>
+
+    <a id="spotifyLink" href="#" target="_blank" class="btn sec sm"
+      style="margin-bottom:.6rem;text-decoration:none;width:auto">Open in Spotify ↗</a>
+
+    <div class="divider"></div>
+    <span class="lbl" style="margin:.35rem 0">Scoreboard</span>
+    <div id="revealScores" style="width:100%;margin-bottom:.6rem"></div>
+
+    <div id="revealHostBtn" style="display:none;width:100%">
+      <button class="btn" onclick="hostNextSong()" id="nextSongBtn">Next Song ▶</button>
+    </div>
+    <div id="revealPlayerWait" style="display:none;color:var(--muted);font-size:.8rem;text-align:center">
+      <span class="waiting-dots">Waiting for host</span>
+    </div>
+  </div>
+
+  <!-- ══ GAME OVER ══ -->
+  <div class="screen" id="sGameOver">
+    <div style="margin:auto;text-align:center;width:100%">
+      <div style="font-size:3.5rem;margin-bottom:.2rem;animation:ptsIn .5s ease-out">🏆</div>
+      <p style="color:var(--muted);font-size:.78rem;margin-bottom:.1rem">Winner</p>
+      <div class="winner-name" id="winnerName"></div>
+      <div class="divider"></div>
+      <div id="finalScores" style="margin-bottom:1rem"></div>
+      <div id="gameOverHostBtns" style="display:none">
+        <button class="btn" style="margin-bottom:.4rem" onclick="hostPlayAgain()">Play Again</button>
+        <button class="btn sec" style="font-size:.78rem" onclick="leaveRoom()">Leave Room</button>
+      </div>
+      <div id="gameOverPlayerMsg" style="display:none;color:var(--muted);font-size:.8rem">
+        Game over! Waiting for host…
+      </div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<script>
+// ── Constants ──────────────────────────────────────────────
+const CLIENT_ID   = '343ddfcdf3ef445697e55ff537a2c18a';
+const REDIRECT_URI = window.location.origin + '/';
+const SCOPES = 'user-read-email user-read-private user-modify-playback-state user-read-playback-state';
+
+const GENRES = ['Pop','Rock','Hip-Hop','R&B','Electronic','Latin','Disney','Movie Hits','Viral Hits','One Hit Wonders'];
+const GENRE_QUERIES = {
+  'Pop':['pop hits','pop music','top pop','pop chart','pop songs'],
+  'Rock':['rock hits','classic rock','rock songs','rock band','rock music'],
+  'Hip-Hop':['hip hop','rap hits','hip hop music','rap songs','hip hop classic'],
+  'R&B':['r&b','soul music','r&b hits','rhythm and blues','r&b songs'],
+  'Electronic':['electronic music','dance music','edm hits','dance hits','electronic dance'],
+  'Latin':['latin music','latin hits','reggaeton','latin pop','latin songs'],
+  'Disney':['disney songs','disney soundtrack','disney music','disney hits','disney princess songs'],
+  'Movie Hits':['movie soundtrack','film music','movie songs','cinema hits','best movie songs'],
+  'Viral Hits':['viral songs','tiktok hits','trending songs','viral music','internet hits'],
+  'One Hit Wonders':['one hit wonder','one hit wonders','novelty song','forgotten hits','one hit'],
+};
+const GENRE_SEEDS = {
+  'Pop':'pop','Rock':'rock','Hip-Hop':'hip-hop','R&B':'r-n-b',
+  'Electronic':'electronic','Latin':'latin',
+  'Disney':null,'Movie Hits':null,'Viral Hits':null,'One Hit Wonders':null
+};
+const ISRAELI_HITS = {
+  '1960s':['להיטים ישראליים 1960','שירים ישראליים 1960'],
+  '1970s':['להיטים ישראליים 1970','שירים ישראליים 1970'],
+  '1980s':['להיטים ישראליים 1980','שירים ישראליים 1980'],
+  '1990s':['להיטים ישראליים 1990','שירים ישראליים 1990'],
+  '2000s':['להיטים ישראליים 2000','שירים ישראליים 2000'],
+  '2010s':['להיטים ישראליים 2010','שירים ישראליים 2010'],
+  '2020s':['להיטים ישראליים 2020','ישראלי 2020'],
+};
+const DECADES = ['1960s','1970s','1980s','1990s','2000s','2010s','2020s'];
+const MEDALS  = ['🥇','🥈','🥉'];
+const ROUND_DURATION = 20;
+const EXTRA_DURATION = 10;
+
+// ── State ──────────────────────────────────────────────────
+let socket = null;
+let myName = '', myId = '', roomCode = '', isHost = false;
+let roundCount = 5;
+let selectedGenres = [], selectedDecades = [], israeliMode = false;
+let accessToken = '', refreshToken = '';
+let timerInterval = null;
+let playedIds = new Set();
+let currentSongs = [];
+let currentSongIdx = 0;
+let currentOptions = []; // 12 tile options for current round
+let myPickIdx = null;    // index of currently selected tile
+let timerDuration = ROUND_DURATION;
+
+// ── PKCE Auth ──────────────────────────────────────────────
+function generateRandom(len) {
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+async function generateChallenge(v) {
+  const data = new TextEncoder().encode(v);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+async function loginSpotify() {
+  const verifier = generateRandom(64);
+  const challenge = await generateChallenge(verifier);
+  sessionStorage.setItem('cv', verifier);
+  sessionStorage.setItem('pendingName', myName);
+  const params = new URLSearchParams({
+    response_type:'code', client_id:CLIENT_ID, scope:SCOPES,
+    redirect_uri:REDIRECT_URI, code_challenge_method:'S256',
+    code_challenge:challenge, show_dialog:'false'
+  });
+  window.location.href = 'https://accounts.spotify.com/authorize?' + params;
+}
+async function exchangeCode(code) {
+  const verifier = sessionStorage.getItem('cv');
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({ grant_type:'authorization_code', code, redirect_uri:REDIRECT_URI, client_id:CLIENT_ID, code_verifier:verifier })
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error(data.error_description || 'Auth failed');
+  return data;
+}
+async function refreshAccessToken() {
+  const rt = sessionStorage.getItem('rt');
+  if (!rt) return;
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({ grant_type:'refresh_token', refresh_token:rt, client_id:CLIENT_ID })
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      accessToken = data.access_token;
+      sessionStorage.setItem('at', accessToken);
+      if (data.refresh_token) sessionStorage.setItem('rt', data.refresh_token);
+      setTimeout(refreshAccessToken, (data.expires_in - 60) * 1000);
+      if (socket && socket.connected && roomCode) socket.emit('host_token', { token: accessToken });
+    }
+  } catch {}
+}
+
+// ── Spotify Connect API ────────────────────────────────────
+async function spotifyFetch(url, options={}) {
+  accessToken = sessionStorage.getItem('at') || accessToken;
+  const headers = { Authorization: 'Bearer ' + accessToken };
+  if (options.method && options.method !== 'GET') headers['Content-Type'] = 'application/json';
+  let res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    await refreshAccessToken();
+    accessToken = sessionStorage.getItem('at') || accessToken;
+    headers.Authorization = 'Bearer ' + accessToken;
+    res = await fetch(url, { ...options, headers });
+  }
+  return res;
+}
+async function spotifyPlay(uri, positionMs) {
+  return spotifyFetch('https://api.spotify.com/v1/me/player/play', {
+    method:'PUT', body: JSON.stringify({ uris:[uri], position_ms:positionMs })
+  });
+}
+async function spotifyPause() {
+  spotifyFetch('https://api.spotify.com/v1/me/player/pause', { method:'PUT' }).catch(()=>{});
+}
+
+// ── Socket ─────────────────────────────────────────────────
+function connectSocket() {
+  if (socket && socket.connected) return;
+  socket = io();
+
+  socket.on('room_created', ({ code, playerId }) => {
+    myId = playerId; roomCode = code;
+    document.getElementById('lobbyCode').textContent = code;
+    hideLoading();
+    const at = sessionStorage.getItem('at');
+    if (at) { accessToken = at; socket.emit('host_token', { token: at }); showScreen('sLobby'); }
+    else showScreen('sSpotify');
+  });
+
+  socket.on('room_joined', ({ code, playerId }) => {
+    myId = playerId; roomCode = code;
+    document.getElementById('playerRoomCode').textContent = code;
+    hideLoading();
+    showScreen('sPlayerLobby');
+  });
+
+  socket.on('error', msg => { hideLoading(); showToast(msg); showErr('joinErr', msg); });
+
+  socket.on('room_update', ({ phase, players, currentSongIdx: si, roundCount: rc, selectedGenres: sg, selectedDecades: sd, israeliMode: im }) => {
+    if (rc) roundCount = rc;
+    document.getElementById('playerCount').textContent = players.length;
+    renderLobbyPlayers(players);
+    renderPlayerLobbyList(players);
+    if (phase === 'playing' || phase === 'revealing' || phase === 'waiting_host') {
+      updatePlayerStatusList(players);
+      updateHostPlayerStatus(players);
+    }
+  });
+
+  socket.on('player_joined', ({ name }) => showToast(`${name} joined!`));
+  socket.on('player_left',   ({ name }) => showToast(`${name} left`));
+
+  socket.on('game_start', ({ roundCount: rc, options }) => {
+    roundCount = rc;
+    currentSongIdx = 0;
+    currentOptions = options;
+    myPickIdx = null;
+    isHost ? initHostGame() : initPlayerGame(options);
+  });
+
+  socket.on('song_playing', () => {
+    document.getElementById(isHost ? 'hostWave' : 'playerWave').classList.remove('off');
+    if (isHost) {
+      document.getElementById('hostStatusPill').textContent = `🎵 Playing — players are picking!`;
+      document.getElementById('hostStatusPill').className = 'pill green';
+      document.getElementById('hostPlayBtn').disabled = true;
+    } else {
+      document.getElementById('playerStatusPill').textContent = '🎵 Listen and pick!';
+      document.getElementById('playerStatusPill').className = 'pill green';
+      enableTiles();
+    }
+  });
+
+  socket.on('timer_start', ({ duration }) => {
+    timerDuration = duration;
+    const localEnd = Date.now() + duration * 1000;
+    startClientTimer(duration, localEnd);
+  });
+
+  socket.on('no_correct_guesses', () => {
+    stopClientTimer();
+    if (isHost) {
+      document.getElementById('hostDecision').style.display = 'block';
+      document.getElementById('hostPlayBtn').style.display = 'none';
+      document.getElementById('hostStatusPill').textContent = 'Nobody got it!';
+      document.getElementById('hostStatusPill').className = 'pill amber';
+      document.getElementById('hostWave').classList.add('off');
+    } else {
+      disableTiles();
+      document.getElementById('playerStatusPill').textContent = '❌ Nobody got it — waiting for host…';
+      document.getElementById('playerStatusPill').className = 'pill amber';
+      document.getElementById('playerWave').classList.add('off');
+    }
+  });
+
+  socket.on('extra_time', ({ duration }) => {
+    timerDuration = duration;
+    myPickIdx = null;
+    document.getElementById('playerPickedMsg').style.display = 'none';
+    if (isHost) {
+      document.getElementById('hostDecision').style.display = 'none';
+      document.getElementById('hostPlayBtn').style.display = 'block';
+      document.getElementById('hostStatusPill').textContent = `+${duration}s — still going!`;
+      document.getElementById('hostStatusPill').className = 'pill green';
+      document.getElementById('hostWave').classList.remove('off');
+    } else {
+      enableTiles();
+      resetTileSelection();
+      document.getElementById('playerStatusPill').textContent = `+${duration}s more — pick now!`;
+      document.getElementById('playerStatusPill').className = 'pill green';
+      document.getElementById('playerWave').classList.remove('off');
+    }
+    const localEnd = Date.now() + duration * 1000;
+    startClientTimer(duration, localEnd);
+  });
+
+  socket.on('reveal', ({ song, correctIdx, players, isLast }) => {
+    stopClientTimer();
+    spotifyPause();
+    if (song?.id) playedIds.add(song.id);
+    highlightTiles(correctIdx);
+    setTimeout(() => showReveal(song, players, isLast), 900);
+  });
+
+  socket.on('next_song', ({ songIdx, roundCount: rc, options }) => {
+    currentSongIdx = songIdx;
+    roundCount = rc;
+    currentOptions = options;
+    myPickIdx = null;
+    isHost ? initHostGame() : initPlayerGame(options);
+  });
+
+  socket.on('game_over',    ({ players }) => { stopClientTimer(); spotifyPause(); showGameOver(players); });
+  socket.on('back_to_lobby', () => { playedIds = new Set(); currentSongs = []; selectedGenres = []; selectedDecades = []; israeliMode = false; window._lobbyBuilt = false; showScreen(isHost ? 'sLobby' : 'sPlayerLobby'); });
+  socket.on('host_left',    () => { showToast('Host left the game'); leaveRoom(); });
+  socket.on('host_status',  ({ status }) => {
+    if (!isHost) {
+      const el = document.getElementById('playerLobbyStatus');
+      if (el) el.textContent = status === 'loading' ? 'Host is loading songs' : 'Waiting';
+      if (status === 'loading') showToast('Host is loading songs…');
+    }
+  });
+}
+
+// ── Navigation ─────────────────────────────────────────────
+function goCreate() {
+  myName = document.getElementById('nameInput').value.trim();
+  if (!myName) { showToast('Enter your name first'); return; }
+  isHost = true; connectSocket();
+  showLoading('Creating room…');
+  socket.emit('create_room', { name: myName });
+}
+function goJoin() {
+  myName = document.getElementById('nameInput').value.trim();
+  if (!myName) { showToast('Enter your name first'); return; }
+  isHost = false; showScreen('sJoin');
+}
+function joinRoom() {
+  const code = document.getElementById('codeInput').value.trim().toUpperCase();
+  if (code.length < 2) { showErr('joinErr','Enter the room code'); return; }
+  connectSocket(); showLoading('Joining…');
+  socket.emit('join_room', { code, name: myName });
+}
+function leaveRoom() {
+  if (socket) socket.disconnect();
+  socket = null; roomCode = ''; myId = ''; isHost = false;
+  stopClientTimer(); showScreen('sHome');
+}
+
+// ── Lobby ──────────────────────────────────────────────────
+function buildLobby() {
+  document.querySelectorAll('.pick.on').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.round-btn.active').forEach(b => b.classList.remove('active'));
+
+  const gg = document.getElementById('genreGrid'); gg.innerHTML = '';
+  GENRES.forEach(g => {
+    const b = document.createElement('button'); b.className = 'pick'; b.textContent = g;
+    b.onclick = () => { b.classList.toggle('on'); selectedGenres = b.classList.contains('on') ? [...selectedGenres,g] : selectedGenres.filter(x=>x!==g); sendConfig(); };
+    gg.appendChild(b);
+  });
+  const il = document.createElement('button');
+  il.className = 'pick'; il.textContent = '🇮🇱 Israeli Hits'; il.style.gridColumn = '1/-1';
+  il.onclick = () => { il.classList.toggle('on'); israeliMode = il.classList.contains('on'); sendConfig(); };
+  gg.appendChild(il);
+
+  const dg = document.getElementById('decadeGrid'); dg.innerHTML = '';
+  DECADES.forEach(d => {
+    const b = document.createElement('button'); b.className = 'pick'; b.textContent = d;
+    b.onclick = () => { b.classList.toggle('on'); selectedDecades = b.classList.contains('on') ? [...selectedDecades,d] : selectedDecades.filter(x=>x!==d); sendConfig(); };
+    dg.appendChild(b);
+  });
+
+  const rb = document.getElementById('roundBtns'); rb.innerHTML = '';
+  for (let n = 4; n <= 10; n++) {
+    const b = document.createElement('button');
+    b.className = 'btn sec round-btn' + (n===5?' active':'');
+    b.textContent = n; b.dataset.n = n;
+    b.onclick = () => { document.querySelectorAll('.round-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); roundCount = n; sendConfig(); };
+    rb.appendChild(b);
+  }
+  roundCount = 5;
+}
+
+function sendConfig() {
+  if (!socket) return;
+  socket.emit('set_config', { roundCount, selectedGenres, selectedDecades, israeliMode });
+}
+
+function renderLobbyPlayers(players) {
+  const c = document.getElementById('lobbyPlayers'); c.innerHTML = '';
+  players.forEach(p => {
+    const d = document.createElement('div'); d.className = 'player-row';
+    d.innerHTML = `<span class="name">${esc(p.name)}${p.isHost?'<span class="host-badge">host</span>':''}</span>`;
+    c.appendChild(d);
+  });
+}
+function renderPlayerLobbyList(players) {
+  const c = document.getElementById('playerLobbyList'); if (!c) return; c.innerHTML = '';
+  players.forEach(p => {
+    const d = document.createElement('div'); d.className = 'player-row';
+    d.innerHTML = `<span class="name">${esc(p.name)}${p.isHost?'<span class="host-badge">host</span>':''}</span>`;
+    c.appendChild(d);
+  });
+}
+
+// ── Fetch Songs ────────────────────────────────────────────
+async function hostStartGame() {
+  if (!selectedGenres.length && !israeliMode) { showErr('lobbyErr','Select at least one genre'); return; }
+  if (!selectedDecades.length) { showErr('lobbyErr','Select at least one decade'); return; }
+  const tok = sessionStorage.getItem('at');
+  if (!tok) { showErr('lobbyErr','Not connected to Spotify — log in first'); return; }
+  accessToken = tok;
+  document.getElementById('startGameBtn').disabled = true;
+  document.getElementById('startGameBtn').textContent = 'Loading songs…';
+  socket.emit('set_status', { status: 'loading' });
+  const songs = await fetchSongs();
+  socket.emit('set_status', { status: 'ready' });
+  document.getElementById('startGameBtn').disabled = false;
+  document.getElementById('startGameBtn').textContent = 'Start Game ▶';
+  if (!songs.length) { showErr('lobbyErr','No songs found — try different filters'); return; }
+  currentSongs = songs;
+  socket.emit('songs_ready', { songs });
+}
+
+async function fetchSongs() {
+  const allTracks = [];
+  if (israeliMode) {
+    for (const decade of selectedDecades) {
+      const year = parseInt(decade);
+      const queries = [...(ISRAELI_HITS[decade]||[]), `להיטים ישראליים ${year}`, `מוזיקה ישראלית ${year}`];
+      await Promise.all(queries.map(q => searchTracks(q, year, allTracks, false)));
+      if (allTracks.length < 8) await Promise.all(queries.slice(0,2).map(q => searchTracks(q, year, allTracks, true)));
+    }
+  } else {
+    const promises = [];
+    for (const decade of selectedDecades) {
+      const year = parseInt(decade);
+      for (const genre of selectedGenres) {
+        const queries = GENRE_QUERIES[genre] || [genre];
+        queries.forEach(q => {
+          promises.push(searchTracks(`${q} year:${year}-${year+9}`, year, allTracks, false));
+          promises.push(searchTracks(`${q} year:${year}-${year+4}`, year, allTracks, false));
+        });
+        if (GENRE_SEEDS[genre]) promises.push(fetchRecommendations(genre, year, allTracks));
+      }
+    }
+    await Promise.all(promises);
+  }
+  const fresh = allTracks.filter(t => !playedIds.has(t.id));
+  fresh.sort((a,b) => b.popularity - a.popularity);
+  const top = fresh.slice(0,120);
+  console.log(`Song pool: ${top.length} tracks`);
+  return shuffleArr(top);
+}
+
+async function searchTracks(q, year, allTracks, ignoreDecade) {
+  try {
+    const r = await spotifyFetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=10&market=IL`);
+    const data = await r.json();
+    if (data.error) return;
+    (data.tracks?.items || []).forEach(t => {
+      const ry = parseInt((t.album?.release_date||'0000').slice(0,4));
+      if ((ignoreDecade || (ry >= year && ry <= year+9)) && !allTracks.find(x=>x.id===t.id)) {
+        allTracks.push({ title:t.name, artist:t.artists.map(a=>a.name).join(', '), uri:t.uri, id:t.id, popularity:t.popularity||0, albumArt:t.album?.images?.[0]?.url||'', releaseYear:ry, durationMs:t.duration_ms||180000 });
+      }
+    });
+  } catch {}
+}
+
+async function fetchRecommendations(genre, year, allTracks) {
+  const seed = GENRE_SEEDS[genre]; if (!seed) return;
+  try {
+    const params = new URLSearchParams({ seed_genres:seed, limit:10, market:'IL', target_popularity:70, min_popularity:40 });
+    const r = await spotifyFetch(`https://api.spotify.com/v1/recommendations?${params}`);
+    const data = await r.json();
+    if (data.error) return;
+    (data.tracks||[]).forEach(t => {
+      const ry = parseInt((t.album?.release_date||'0000').slice(0,4));
+      if (ry>=year && ry<=year+9 && !allTracks.find(x=>x.id===t.id)) {
+        allTracks.push({ title:t.name, artist:t.artists.map(a=>a.name).join(', '), uri:t.uri, id:t.id, popularity:t.popularity||0, albumArt:t.album?.images?.[0]?.url||'', releaseYear:ry, durationMs:t.duration_ms||180000 });
+      }
+    });
+  } catch {}
+}
+
+// ── Host Game ──────────────────────────────────────────────
+function initHostGame() {
+  stopClientTimer();
+  showScreen('sHostGame');
+  document.getElementById('hostSongCounter').textContent = `Song ${currentSongIdx+1} of ${roundCount}`;
+  document.getElementById('hostGenreInfo').textContent = (israeliMode?'🇮🇱 ':'')+selectedGenres.join(', ');
+  document.getElementById('hostPlayBtn').disabled = false;
+  document.getElementById('hostPlayBtn').style.display = 'block';
+  document.getElementById('hostPlayBtn').textContent = '▶ Play Song';
+  document.getElementById('hostWave').classList.add('off');
+  document.getElementById('hostDecision').style.display = 'none';
+  document.getElementById('hostOpenSpotify').style.display = 'none';
+  document.getElementById('hostStatusPill').textContent = 'Click ▶ Play to start the round';
+  document.getElementById('hostStatusPill').className = 'pill purple';
+  updateHostTimer(ROUND_DURATION, ROUND_DURATION);
+}
+
+async function hostPlayClip() {
+  const song = currentSongs[currentSongIdx];
+  if (!song) return;
+  document.getElementById('hostPlayBtn').disabled = true;
+  document.getElementById('hostPlayBtn').textContent = 'Playing…';
+  document.getElementById('hostWave').classList.remove('off');
+
+  const posMs = Math.floor((song.durationMs || 180000) / 4); // start at 25% for variety
+  const res = await spotifyPlay(song.uri, posMs);
+
+  if (res && (res.status === 404 || res.status === 204)) {
+    document.getElementById('hostOpenSpotify').style.display = 'block';
+    document.getElementById('hostPlayBtn').disabled = false;
+    document.getElementById('hostPlayBtn').textContent = '▶ Play Song';
+    document.getElementById('hostWave').classList.add('off');
+    return;
+  }
+  if (res && res.status === 403) {
+    showToast('Spotify Premium required');
+    document.getElementById('hostPlayBtn').disabled = false;
+    document.getElementById('hostPlayBtn').textContent = '▶ Play Song';
+    document.getElementById('hostWave').classList.add('off');
+    return;
+  }
+
+  document.getElementById('hostOpenSpotify').style.display = 'none';
+  socket.emit('song_playing');
+}
+
+function hostExtraTime()    { document.getElementById('hostDecision').style.display='none'; socket.emit('extra_time'); }
+function hostForceReveal()  { socket.emit('force_reveal'); }
+function hostNextSong()     { spotifyPause(); socket.emit('next_song'); }
+function hostPlayAgain()    { socket.emit('play_again'); }
+function hostEndGame()      { if (!confirm('End the game?')) return; stopClientTimer(); spotifyPause(); socket.emit('end_game'); }
+
+function updateHostPlayerStatus(players) {
+  const c = document.getElementById('hostPlayerStatus'); if (!c) return; c.innerHTML = '';
+  players.filter(p => !p.isHost).forEach(p => {
+    const d = document.createElement('div');
+    d.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.22rem 0;font-size:.8rem';
+    const status = p.correct === true
+      ? `<span style="color:var(--green);font-size:.72rem">✓ #${p.finishPosition} +${[10,8,6,4,2,1][Math.min(p.finishPosition-1,5)]}pts</span>`
+      : p.correct === false
+      ? `<span style="color:var(--red);font-size:.72rem">✗ wrong</span>`
+      : `<span style="color:var(--muted);font-size:.72rem">picking…</span>`;
+    d.innerHTML = `<span>${esc(p.name)}</span>${status}`;
+    c.appendChild(d);
+  });
+}
+
+// ── Player Game ────────────────────────────────────────────
+function initPlayerGame(options) {
+  stopClientTimer();
+  showScreen('sPlayerGame');
+  currentOptions = options;
+  myPickIdx = null;
+  document.getElementById('playerSongCounter').textContent = `Song ${currentSongIdx+1} of ${roundCount}`;
+  document.getElementById('playerWave').classList.add('off');
+  document.getElementById('playerStatusPill').textContent = 'Waiting for host to play…';
+  document.getElementById('playerStatusPill').className = 'pill purple';
+  document.getElementById('playerPickedMsg').style.display = 'none';
+  updatePlayerTimer(ROUND_DURATION, ROUND_DURATION);
+  renderTiles(options, false);
+}
+
+function renderTiles(options, enabled) {
+  const grid = document.getElementById('playerTileGrid'); grid.innerHTML = '';
+  options.forEach((opt, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile disabled';
+    tile.dataset.idx = i;
+    tile.innerHTML = `<div class="tile-title">${esc(opt.title)}</div><div class="tile-artist">${esc(opt.artist)}</div>`;
+    tile.onclick = () => onTilePick(i);
+    grid.appendChild(tile);
+  });
+}
+
+function enableTiles() {
+  document.querySelectorAll('#playerTileGrid .tile').forEach(t => t.classList.remove('disabled'));
+}
+function disableTiles() {
+  document.querySelectorAll('#playerTileGrid .tile').forEach(t => t.classList.add('disabled'));
+}
+function resetTileSelection() {
+  document.querySelectorAll('#playerTileGrid .tile').forEach(t => t.classList.remove('selected','correct','wrong'));
+}
+
+function onTilePick(idx) {
+  if (myPickIdx === idx) return; // already selected this one
+  myPickIdx = idx;
+  // Visual: deselect all, select picked
+  document.querySelectorAll('#playerTileGrid .tile').forEach((t,i) => {
+    t.classList.toggle('selected', i === idx);
+  });
+  // Send to server (overwrite previous pick)
+  socket.emit('submit_pick', { optionIdx: idx });
+  // Show confirmation
+  const opt = currentOptions[idx];
+  document.getElementById('playerPickedName').textContent = `${opt.title} — ${opt.artist}`;
+  document.getElementById('playerPickedMsg').style.display = 'block';
+}
+
+function highlightTiles(correctIdx) {
+  document.querySelectorAll('#playerTileGrid .tile').forEach((t, i) => {
+    t.classList.remove('selected');
+    t.classList.add('disabled');
+    if (i === correctIdx) { t.classList.add('correct'); }
+    else if (i === myPickIdx && myPickIdx !== correctIdx) { t.classList.add('wrong'); }
+  });
+}
+
+function updatePlayerStatusList(players) {
+  const c = document.getElementById('playerStatusList'); if (!c) return; c.innerHTML = '';
+  players.filter(p => !p.isHost).forEach(p => {
+    const d = document.createElement('div');
+    d.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.18rem 0;font-size:.78rem';
+    const status = p.correct === true
+      ? `<span style="color:var(--green)">✓</span>`
+      : p.correct === false
+      ? `<span style="color:var(--red)">✗</span>`
+      : `<span style="color:var(--muted)">…</span>`;
+    d.innerHTML = `<span>${esc(p.name)}</span><span style="color:var(--accent3);font-size:.75rem">${p.score||0}pts ${status}</span>`;
+    c.appendChild(d);
+  });
+  const me = players.find(p => p.id === myId);
+  if (me) document.getElementById('myScore').textContent = (me.score||0)+' pts';
+}
+
+// ── Timer ──────────────────────────────────────────────────
+function startClientTimer(duration, endTime) {
+  stopClientTimer();
+  let fired = false;
+  const tick = () => {
+    const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+    updateHostTimer(remaining, duration);
+    updatePlayerTimer(remaining, duration);
+    if (remaining <= 0 && !fired) {
+      fired = true;
+      stopClientTimer();
+      if (isHost) {
+        document.getElementById('hostWave').classList.add('off');
+        document.getElementById('hostStatusPill').textContent = "⏱ Time's up!";
+        document.getElementById('hostStatusPill').className = 'pill amber';
+      } else {
+        disableTiles();
+        document.getElementById('playerWave').classList.add('off');
+        document.getElementById('playerStatusPill').textContent = "⏱ Time's up — waiting for result…";
+        document.getElementById('playerStatusPill').className = 'pill amber';
+      }
+    }
+  };
+  tick();
+  timerInterval = setInterval(tick, 100);
+}
+function stopClientTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+
+function updateHostTimer(val, max) {
+  const el = document.getElementById('hostTimerRing'); if (!el) return;
+  const circumference = 239;
+  el.style.strokeDashoffset = (val/max) * circumference;
+  el.style.stroke = val<=5?'var(--red)':val<=10?'var(--gold)':'var(--accent2)';
+  document.getElementById('hostTimerNum').textContent = val;
+}
+function updatePlayerTimer(val, max) {
+  const el = document.getElementById('playerTimerRing'); if (!el) return;
+  const circumference = 239;
+  el.style.strokeDashoffset = (val/max) * circumference;
+  el.style.stroke = val<=5?'var(--red)':val<=10?'var(--gold)':'var(--accent2)';
+  document.getElementById('playerTimerNum').textContent = val;
+}
+
+// ── Reveal ─────────────────────────────────────────────────
+function showReveal(song, players, isLast) {
+  showScreen('sReveal');
+  const nonHosts = players.filter(p => !p.isHost);
+  const winners  = nonHosts.filter(p => p.correct === true).sort((a,b)=>a.finishPosition-b.finishPosition);
+  const headText = winners.length ? `🎉 ${winners.map(p=>p.name).join(', ')} got it!` : 'Nobody got it!';
+  document.getElementById('revealHead').textContent = headText;
+  document.getElementById('revealSub').textContent  = song.releaseYear ? `${song.releaseYear}` : '';
+  document.getElementById('revealSong').textContent   = song.title;
+  document.getElementById('revealArtist').textContent = song.artist;
+  document.getElementById('spotifyLink').href = `https://open.spotify.com/track/${song.id}`;
+  if (song.albumArt) { document.getElementById('revealImg').src = song.albumArt; document.getElementById('revealArt').style.display='block'; }
+  else document.getElementById('revealArt').style.display='none';
+
+  const sorted = [...players].sort((a,b)=>(b.score||0)-(a.score||0));
+  const sc = document.getElementById('revealScores'); sc.innerHTML = '';
+  sorted.forEach((p,i) => {
+    const r = document.createElement('div'); r.className = 'player-row';
+    if (i===0) r.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:.45rem .7rem;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:var(--rad-sm);margin-bottom:.25rem';
+    const badge = p.correct===true ? ` <span style="color:var(--green);font-size:.7rem">✓ #${p.finishPosition}</span>` : p.correct===false ? ` <span style="color:var(--red);font-size:.7rem">✗</span>` : '';
+    r.innerHTML = `<span class="name">${MEDALS[i]||''}${esc(p.name)}${badge}</span><span class="pts">${p.score||0} pts</span>`;
+    sc.appendChild(r);
+  });
+
+  if (winners.length) launchConfetti();
+  document.getElementById('revealHostBtn').style.display   = isHost ? 'block' : 'none';
+  document.getElementById('revealPlayerWait').style.display = isHost ? 'none'  : 'block';
+  if (isHost) document.getElementById('nextSongBtn').textContent = isLast ? 'See Final Results ▶' : 'Next Song ▶';
+}
+
+// ── Game Over ──────────────────────────────────────────────
+function showGameOver(players) {
+  showScreen('sGameOver');
+  const sorted = [...players].sort((a,b)=>(b.score||0)-(a.score||0));
+  document.getElementById('winnerName').textContent = sorted[0]?.name || '—';
+  const fc = document.getElementById('finalScores'); fc.innerHTML = '';
+  sorted.forEach((p,i) => {
+    const r = document.createElement('div'); r.className = 'player-row';
+    if (i===0) r.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:.45rem .7rem;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:var(--rad-sm);margin-bottom:.25rem';
+    r.innerHTML = `<span class="name">${MEDALS[i]||''}${esc(p.name)}</span><span class="pts">${p.score||0} pts</span>`;
+    fc.appendChild(r);
+  });
+  document.getElementById('gameOverHostBtns').style.display   = isHost ? 'block' : 'none';
+  document.getElementById('gameOverPlayerMsg').style.display  = isHost ? 'none'  : 'block';
+  launchConfetti();
+}
+
+// ── Confetti ───────────────────────────────────────────────
+function launchConfetti() {
+  const colors = ['#7c3aed','#a855f7','#c084fc','#f59e0b','#22c55e','#ffffff'];
+  for (let i = 0; i < 45; i++) {
+    const el = document.createElement('div'); el.className = 'confetti-piece';
+    el.style.cssText = `left:${Math.random()*100}vw;top:0;background:${colors[Math.floor(Math.random()*colors.length)]};animation-delay:${Math.random()*.7}s;animation-duration:${.9+Math.random()*.9}s;transform:rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function shuffleArr(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function copyCode() {
+  const code = document.getElementById('lobbyCode').textContent;
+  if (!code || code==='----') return;
+  navigator.clipboard?.writeText(code).then(()=>showToast('Code copied: '+code)).catch(()=>showToast('Room code: '+code));
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id==='sLobby' && !window._lobbyBuilt) { buildLobby(); window._lobbyBuilt=true; }
+}
+function showErr(id,msg) { const e=document.getElementById(id); if(!e)return; e.textContent=msg; setTimeout(()=>e.textContent='',3500); }
+function showLoading(msg) { document.getElementById('loadingMsg').textContent=msg; document.getElementById('loadingOverlay').classList.add('show'); }
+function hideLoading()    { document.getElementById('loadingOverlay').classList.remove('show'); }
+let toastTimer=null;
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+window._lobbyBuilt = false;
+
+// ── Boot ───────────────────────────────────────────────────
+(async function boot() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  window.history.replaceState({},'','/');
+  if (code) {
+    showLoading('Logging in to Spotify…');
+    try {
+      const data = await exchangeCode(code);
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token || '';
+      sessionStorage.setItem('at', accessToken);
+      if (refreshToken) sessionStorage.setItem('rt', refreshToken);
+      setTimeout(refreshAccessToken, (data.expires_in-60)*1000);
+      const pendingName = sessionStorage.getItem('pendingName');
+      if (pendingName) { myName=pendingName; document.getElementById('nameInput').value=myName; sessionStorage.removeItem('pendingName'); }
+      document.getElementById('spotifyStatus').textContent = '✓ Spotify connected';
+    } catch(e) { showErr('spotifyErr','Login failed: '+e.message); }
+    hideLoading(); showScreen('sHome'); return;
+  }
+  const at = sessionStorage.getItem('at');
+  if (at) { accessToken=at; refreshToken=sessionStorage.getItem('rt')||''; document.getElementById('spotifyStatus').textContent='✓ Spotify connected'; }
+  showScreen('sHome');
+})();
+
+// ── Enter key shortcuts ────────────────────────────────────
+document.getElementById('codeInput').addEventListener('keydown', e => { if(e.key==='Enter') joinRoom(); });
+window.addEventListener('popstate', () => { if(socket){socket.disconnect();socket=null;} stopClientTimer(); showScreen('sHome'); });
+</script>
+</body>
+</html>
