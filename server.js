@@ -69,12 +69,24 @@ function buildOptions(correctSong, allSongs) {
 
   const pool = allSongs.filter(s => s.id !== correctSong.id);
   const correctDecade = Math.floor((correctSong.releaseYear || 2000) / 10) * 10;
+  const correctYear   = correctSong.releaseYear || 2000;
 
-  // ~4 same artist
-  shuffle(pool.filter(s => s.artist === correctSong.artist)).slice(0, 4).forEach(tryAdd);
-  // ~4 same decade, different artist
-  shuffle(pool.filter(s => Math.floor((s.releaseYear||2000)/10)*10 === correctDecade && s.artist !== correctSong.artist)).slice(0, 4).forEach(tryAdd);
-  // rest random
+  // Max 2 from same artist — prevents obvious pattern
+  shuffle(pool.filter(s => s.artist === correctSong.artist)).slice(0, 2).forEach(tryAdd);
+
+  // ~2 from same year (±2 years) different artist — very close, tricky
+  shuffle(pool.filter(s => Math.abs((s.releaseYear||2000) - correctYear) <= 2 && s.artist !== correctSong.artist)).slice(0, 2).forEach(tryAdd);
+
+  // ~3 from same decade different artist
+  shuffle(pool.filter(s => Math.floor((s.releaseYear||2000)/10)*10 === correctDecade && s.artist !== correctSong.artist && !used.has(s.id))).slice(0, 3).forEach(tryAdd);
+
+  // ~2 from adjacent decade (decade before or after)
+  shuffle(pool.filter(s => {
+    const d = Math.floor((s.releaseYear||2000)/10)*10;
+    return (d === correctDecade - 10 || d === correctDecade + 10) && !used.has(s.id);
+  })).slice(0, 2).forEach(tryAdd);
+
+  // Fill rest with random from entire pool
   shuffle(pool.filter(s => !used.has(s.id))).forEach(tryAdd);
 
   while (distractors.length < TILES - 1) {
