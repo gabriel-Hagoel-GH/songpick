@@ -39,9 +39,9 @@ app.get('/api/search', async (req, res) => {
 
 // ── Constants ──────────────────────────────────────────────
 const POSITION_POINTS = [10, 8, 6, 4, 2, 1];
-const ROUND_DURATION  = 20;
 const EXTRA_DURATION  = 10;
-const TILES           = 12;
+const DEFAULT_DURATION = 20;
+const DEFAULT_TILES    = 12;
 
 function getPoints(pos) {
   return pos >= 1 ? (POSITION_POINTS[Math.min(pos - 1, POSITION_POINTS.length - 1)]) : 0;
@@ -57,7 +57,8 @@ function shuffle(arr) {
   return a;
 }
 
-function buildOptions(correctSong, allSongs) {
+function buildOptions(correctSong, allSongs, tileCount) {
+  const TILES = tileCount || DEFAULT_TILES;
   const used = new Set([correctSong.id]);
   const distractors = [];
 
@@ -111,6 +112,8 @@ function makeRoom(hostId, hostName) {
     players: {},
     songs: [], currentSongIdx: 0, currentSong: null, currentOptions: [],
     roundCount: 5,
+    tileCount: DEFAULT_TILES,
+    roundDuration: DEFAULT_DURATION,
     timerEnd: null, timerInterval: null, timerRunning: false,
     correctCount: 0,
     selectedGenres: [], selectedDecades: [], israeliMode: false,
@@ -133,7 +136,8 @@ function broadcastRoom(room) {
   io.to(room.code).emit('room_update', {
     phase: room.phase, players: roomPlayers(room),
     currentSongIdx: room.currentSongIdx, roundCount: room.roundCount,
-    selectedGenres: room.selectedGenres, selectedDecades: room.selectedDecades, israeliMode: room.israeliMode,
+    selectedGenres: room.selectedGenres, selectedDecades: room.selectedDecades,
+    israeliMode: room.israeliMode, tileCount: room.tileCount, roundDuration: room.roundDuration,
   });
 }
 
@@ -222,19 +226,25 @@ io.on('connection', socket => {
   socket.on('join_room', ({ code, name }) => {
     const room = rooms[code.toUpperCase()];
     if (!room) { socket.emit('error', 'Room not found'); return; }
-    if (room.phase !== 'lobby') { socket.emit('error', 'Game already started'); return; }
     if (Object.keys(room.players).length >= 12) { socket.emit('error', 'Room is full'); return; }
+
     room.players[socket.id] = { name, score: 0, isHost: false, pick: null, correct: null, finishPosition: null };
     socket.join(code.toUpperCase());
     socket.emit('room_joined', { code: code.toUpperCase(), playerId: socket.id });
+
+    if (room.phase !== 'lobby') {
+      // Late join — send current game state so they can play from here
+      socket.emit('game_start', { roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount });
+    }
+
     broadcastRoom(room);
     io.to(room.code).emit('player_joined', { name });
   });
 
-  socket.on('set_config', ({ roundCount, selectedGenres, selectedDecades, israeliMode }) => {
+  socket.on('set_config', ({ roundCount, selectedGenres, selectedDecades, israeliMode, tileCount, roundDuration }) => {
     const room = getRoomOf(socket.id);
     if (!room || room.hostId !== socket.id) return;
-    Object.assign(room, { roundCount, selectedGenres, selectedDecades, israeliMode });
+    Object.assign(room, { roundCount, selectedGenres, selectedDecades, israeliMode, tileCount, roundDuration });
     broadcastRoom(room);
   });
 
@@ -255,16 +265,18 @@ io.on('connection', socket => {
     room.currentSongIdx = 0;
     room.phase = 'playing';
     room.currentSong = songs[0];
-    room.currentOptions = buildOptions(songs[0], songs);
+    room.currentOptions = buildOptions(songs[0], songs, room.tileCount);
     resetRound(room);
-    io.to(room.code).emit('game_start', { roundCount: room.roundCount, options: room.currentOptions });
+    io.to(room.code).emit('game_start', { roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount });
     broadcastRoom(room);
   });
 
   socket.on('song_playing', () => {
     const room = getRoomOf(socket.id);
     if (!room || room.hostId !== socket.id || room.timerRunning) return;
-    startTimer(room, ROUND_DURATION);
+    const duration = room.extraTime ? EXTRA_DURATION : (room.roundDuration || DEFAULT_DURATION);
+    room.extraTime = false;
+    startTimer(room, duration);
     io.to(room.code).emit('song_playing');
   });
 
@@ -281,9 +293,10 @@ io.on('connection', socket => {
     const room = getRoomOf(socket.id);
     if (!room || room.hostId !== socket.id || room.phase !== 'waiting_host') return;
     room.phase = 'playing';
+    room.extraTime = true;
     resetRound(room);
-    startTimer(room, EXTRA_DURATION);
     io.to(room.code).emit('extra_time', { duration: EXTRA_DURATION });
+    broadcastRoom(room);
   });
 
   socket.on('force_reveal', () => {
@@ -302,10 +315,10 @@ io.on('connection', socket => {
       broadcastRoom(room); return;
     }
     room.currentSong = room.songs[room.currentSongIdx];
-    room.currentOptions = buildOptions(room.currentSong, room.songs);
+    room.currentOptions = buildOptions(room.currentSong, room.songs, room.tileCount);
     room.phase = 'playing';
     resetRound(room);
-    io.to(room.code).emit('next_song', { songIdx: room.currentSongIdx, roundCount: room.roundCount, options: room.currentOptions });
+    io.to(room.code).emit('next_song', { songIdx: room.currentSongIdx, roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount });
     broadcastRoom(room);
   });
 
