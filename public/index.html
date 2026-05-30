@@ -214,6 +214,18 @@ input::placeholder{color:var(--muted)}
   border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* ── Accordion ── */
+.acc-row{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;cursor:pointer;transition:background .15s;user-select:none}
+.acc-row:hover{background:var(--bg3)}
+.acc-left{display:flex;flex-direction:column;gap:.15rem}
+.acc-title{font-size:.88rem;font-weight:600;color:var(--text)}
+.acc-sub{font-size:.7rem;color:var(--accent3)}
+.acc-sub.empty{color:var(--muted)}
+.acc-chev{width:16px;height:16px;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.acc-chev.open{transform:rotate(180deg)}
+.acc-body{background:var(--bg3);border-top:1px solid var(--border)}
+.acc-divider{height:1px;background:var(--border)}
+
 /* ── Round buttons ── */
 .round-btn{padding:.38rem .7rem;font-size:.8rem;width:auto}
 .round-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -300,18 +312,53 @@ input::placeholder{color:var(--muted)}
       <span class="lbl">Players (<span id="playerCount">1</span>)</span>
       <div id="lobbyPlayers"></div>
     </div>
-    <div class="card" id="hostConfig">
-      <span class="lbl" style="margin-bottom:.4rem">Genre</span>
-      <div class="pgrid g3" id="genreGrid"></div>
-      <span class="lbl" style="margin-bottom:.4rem">Decade(s)</span>
-      <div class="pgrid g4" id="decadeGrid"></div>
-      <div class="divider" style="margin:.4rem 0"></div>
-      <span class="lbl">Rounds</span>
-      <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.25rem" id="roundBtns"></div>
-      <span class="lbl" style="margin-top:.4rem">Tiles per round</span>
-      <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.25rem" id="tileCountBtns"></div>
-      <span class="lbl" style="margin-top:.4rem">Round duration</span>
-      <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.25rem" id="durationBtns"></div>
+    <div class="card" id="hostConfig" style="padding:0;overflow:hidden">
+
+      <!-- Genre accordion -->
+      <div class="acc-row" id="accGenre" onclick="toggleAcc('genre')">
+        <div class="acc-left">
+          <span class="acc-title">🎵 Genre</span>
+          <span class="acc-sub" id="summGenre">Tap to select</span>
+        </div>
+        <svg class="acc-chev" id="chevGenre" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="acc-body" id="bodyGenre" style="display:none">
+        <div class="pgrid g3" id="genreGrid" style="padding:.6rem"></div>
+      </div>
+
+      <div class="acc-divider"></div>
+
+      <!-- Decade accordion -->
+      <div class="acc-row" id="accDecade" onclick="toggleAcc('decade')">
+        <div class="acc-left">
+          <span class="acc-title">📅 Decade</span>
+          <span class="acc-sub" id="summDecade">Tap to select</span>
+        </div>
+        <svg class="acc-chev" id="chevDecade" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="acc-body" id="bodyDecade" style="display:none">
+        <div class="pgrid g4" id="decadeGrid" style="padding:.6rem"></div>
+      </div>
+
+      <div class="acc-divider"></div>
+
+      <!-- Settings accordion -->
+      <div class="acc-row" id="accSettings" onclick="toggleAcc('settings')">
+        <div class="acc-left">
+          <span class="acc-title">⚙️ Settings</span>
+          <span class="acc-sub" id="summSettings">5 rounds · 12 tiles · 20s</span>
+        </div>
+        <svg class="acc-chev" id="chevSettings" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="acc-body" id="bodySettings" style="display:none;padding:.6rem">
+        <span class="lbl">Rounds</span>
+        <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.6rem" id="roundBtns"></div>
+        <span class="lbl">Tiles per round</span>
+        <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.6rem" id="tileCountBtns"></div>
+        <span class="lbl">Round duration</span>
+        <div style="display:flex;gap:.3rem;flex-wrap:wrap" id="durationBtns"></div>
+      </div>
+
     </div>
     <div class="err" id="lobbyErr"></div>
     <button class="btn" id="startGameBtn" onclick="hostStartGame()">Start Game ▶</button>
@@ -783,25 +830,62 @@ function leaveRoom() {
 }
 
 // ── Lobby ──────────────────────────────────────────────────
+function toggleAcc(name) {
+  const body  = document.getElementById('body' + name.charAt(0).toUpperCase() + name.slice(1));
+  const chev  = document.getElementById('chev' + name.charAt(0).toUpperCase() + name.slice(1));
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  chev.classList.toggle('open', !isOpen);
+}
+
+function updateSummaries() {
+  // Genre
+  const gEl = document.getElementById('summGenre');
+  const gLabel = [...(selectedGenres), ...(israeliMode ? ['🇮🇱 Israeli'] : [])];
+  gEl.textContent = gLabel.length ? gLabel.join(', ') : 'Tap to select';
+  gEl.className = 'acc-sub' + (gLabel.length ? '' : ' empty');
+
+  // Decade
+  const dEl = document.getElementById('summDecade');
+  dEl.textContent = selectedDecades.length ? selectedDecades.join(', ') : 'Tap to select';
+  dEl.className = 'acc-sub' + (selectedDecades.length ? '' : ' empty');
+
+  // Settings
+  document.getElementById('summSettings').textContent = `${roundCount} rounds · ${tileCount} tiles · ${roundDuration}s`;
+}
+
 function buildLobby() {
   document.querySelectorAll('.pick.on').forEach(b => b.classList.remove('on'));
   document.querySelectorAll('.round-btn.active').forEach(b => b.classList.remove('active'));
+  selectedGenres = []; selectedDecades = []; israeliMode = false;
+  roundCount = 5; tileCount = 12; roundDuration = 20;
 
   const gg = document.getElementById('genreGrid'); gg.innerHTML = '';
   GENRES.forEach(g => {
     const b = document.createElement('button'); b.className = 'pick'; b.textContent = g;
-    b.onclick = () => { b.classList.toggle('on'); selectedGenres = b.classList.contains('on') ? [...selectedGenres,g] : selectedGenres.filter(x=>x!==g); sendConfig(); };
+    b.onclick = () => {
+      b.classList.toggle('on');
+      selectedGenres = b.classList.contains('on') ? [...selectedGenres,g] : selectedGenres.filter(x=>x!==g);
+      updateSummaries(); sendConfig();
+    };
     gg.appendChild(b);
   });
   const il = document.createElement('button');
   il.className = 'pick'; il.textContent = '🇮🇱 Israeli Hits'; il.style.gridColumn = '1/-1';
-  il.onclick = () => { il.classList.toggle('on'); israeliMode = il.classList.contains('on'); sendConfig(); };
+  il.onclick = () => {
+    il.classList.toggle('on'); israeliMode = il.classList.contains('on');
+    updateSummaries(); sendConfig();
+  };
   gg.appendChild(il);
 
   const dg = document.getElementById('decadeGrid'); dg.innerHTML = '';
   DECADES.forEach(d => {
     const b = document.createElement('button'); b.className = 'pick'; b.textContent = d;
-    b.onclick = () => { b.classList.toggle('on'); selectedDecades = b.classList.contains('on') ? [...selectedDecades,d] : selectedDecades.filter(x=>x!==d); sendConfig(); };
+    b.onclick = () => {
+      b.classList.toggle('on');
+      selectedDecades = b.classList.contains('on') ? [...selectedDecades,d] : selectedDecades.filter(x=>x!==d);
+      updateSummaries(); sendConfig();
+    };
     dg.appendChild(b);
   });
 
@@ -809,35 +893,39 @@ function buildLobby() {
   for (let n = 4; n <= 10; n++) {
     const b = document.createElement('button');
     b.className = 'btn sec round-btn' + (n===5?' active':'');
-    b.textContent = n; b.dataset.n = n;
-    b.onclick = () => { document.querySelectorAll('.round-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); roundCount = n; sendConfig(); };
+    b.textContent = n;
+    b.onclick = () => {
+      document.querySelectorAll('.round-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); roundCount = n; updateSummaries(); sendConfig();
+    };
     rb.appendChild(b);
   }
-  roundCount = 5;
 
-  // Tile count picker
   const tc = document.getElementById('tileCountBtns'); tc.innerHTML = '';
   [12, 8].forEach(n => {
     const b = document.createElement('button');
-    b.className = 'btn sec round-btn' + (n===12?' active':'');
-    b.textContent = n + ' tiles'; b.dataset.n = n;
-    b.onclick = () => { document.querySelectorAll('.tile-count-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); tileCount = n; sendConfig(); };
-    b.classList.add('tile-count-btn');
+    b.className = 'btn sec round-btn tile-count-btn' + (n===12?' active':'');
+    b.textContent = n + ' tiles';
+    b.onclick = () => {
+      document.querySelectorAll('.tile-count-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); tileCount = n; updateSummaries(); sendConfig();
+    };
     tc.appendChild(b);
   });
-  tileCount = 12;
 
-  // Duration picker
   const dc = document.getElementById('durationBtns'); dc.innerHTML = '';
   [10, 20, 30].forEach(n => {
     const b = document.createElement('button');
-    b.className = 'btn sec round-btn' + (n===20?' active':'');
-    b.textContent = n + 's'; b.dataset.n = n;
-    b.onclick = () => { document.querySelectorAll('.dur-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); roundDuration = n; sendConfig(); };
-    b.classList.add('dur-btn');
+    b.className = 'btn sec round-btn dur-btn' + (n===20?' active':'');
+    b.textContent = n + 's';
+    b.onclick = () => {
+      document.querySelectorAll('.dur-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); roundDuration = n; updateSummaries(); sendConfig();
+    };
     dc.appendChild(b);
   });
-  roundDuration = 20;
+
+  updateSummaries();
 }
 
 function sendConfig() {
@@ -920,7 +1008,7 @@ async function searchTracks(q, year, allTracks, ignoreDecade) {
     (data.tracks?.items || []).forEach(t => {
       const ry = parseInt((t.album?.release_date||'0000').slice(0,4));
       if ((ignoreDecade || (ry >= year && ry <= year+9)) && !allTracks.find(x=>x.id===t.id)) {
-        allTracks.push({ title:t.name, artist:t.artists.map(a=>a.name).join(', '), uri:t.uri, id:t.id, popularity:t.popularity||0, albumArt:t.album?.images?.[0]?.url||'', releaseYear:ry, durationMs:t.duration_ms||180000 });
+        allTracks.push({ title:t.name, artist:t.artists.map(a=>a.name).join(', '), uri:t.uri, id:t.id, popularity:t.popularity||0, albumArt:t.album?.images?.[0]?.url||'', releaseYear:ry, durationMs:t.duration_ms||180000, lang: israeliMode ? 'he' : 'en' });
       }
     });
   } catch {}
@@ -936,7 +1024,7 @@ async function fetchRecommendations(genre, year, allTracks) {
     (data.tracks||[]).forEach(t => {
       const ry = parseInt((t.album?.release_date||'0000').slice(0,4));
       if (ry>=year && ry<=year+9 && !allTracks.find(x=>x.id===t.id)) {
-        allTracks.push({ title:t.name, artist:t.artists.map(a=>a.name).join(', '), uri:t.uri, id:t.id, popularity:t.popularity||0, albumArt:t.album?.images?.[0]?.url||'', releaseYear:ry, durationMs:t.duration_ms||180000 });
+        allTracks.push({ title:t.name, artist:t.artists.map(a=>a.name).join(', '), uri:t.uri, id:t.id, popularity:t.popularity||0, albumArt:t.album?.images?.[0]?.url||'', releaseYear:ry, durationMs:t.duration_ms||180000, lang: israeliMode ? 'he' : 'en' });
       }
     });
   } catch {}
@@ -1077,8 +1165,7 @@ function onHostTilePick(idx) {
   if (myPickIdx === idx) return;
   myPickIdx = idx;
   document.querySelectorAll('#hostTileGrid .tile').forEach((t, i) => {
-    // keep correct tile green, add selected ring to picked tile
-    t.classList.toggle('selected', i === idx && !currentOptions[i]?.isCorrect);
+    t.classList.toggle('selected', i === idx);
   });
   socket.emit('submit_pick', { optionIdx: idx });
 }
