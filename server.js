@@ -61,37 +61,48 @@ function buildOptions(correctSong, allSongs, tileCount) {
   const TILES = tileCount || DEFAULT_TILES;
   const used = new Set([correctSong.id]);
   const distractors = [];
+  const correctLang = correctSong.lang || 'en';
 
   function tryAdd(song) {
     if (!song || used.has(song.id) || distractors.length >= TILES - 1) return;
+    // Never mix languages
+    if ((song.lang || 'en') !== correctLang) return;
     used.add(song.id);
     distractors.push({ id: song.id, title: song.title, artist: song.artist });
   }
 
-  const pool = allSongs.filter(s => s.id !== correctSong.id);
+  // Only pool songs in the same language
+  const pool = allSongs.filter(s => s.id !== correctSong.id && (s.lang || 'en') === correctLang);
   const correctDecade = Math.floor((correctSong.releaseYear || 2000) / 10) * 10;
   const correctYear   = correctSong.releaseYear || 2000;
 
-  // Max 2 from same artist — prevents obvious pattern
+  // Max 2 from same artist
   shuffle(pool.filter(s => s.artist === correctSong.artist)).slice(0, 2).forEach(tryAdd);
 
-  // ~2 from same year (±2 years) different artist — very close, tricky
+  // ~2 from same year (±2 years) different artist
   shuffle(pool.filter(s => Math.abs((s.releaseYear||2000) - correctYear) <= 2 && s.artist !== correctSong.artist)).slice(0, 2).forEach(tryAdd);
 
   // ~3 from same decade different artist
   shuffle(pool.filter(s => Math.floor((s.releaseYear||2000)/10)*10 === correctDecade && s.artist !== correctSong.artist && !used.has(s.id))).slice(0, 3).forEach(tryAdd);
 
-  // ~2 from adjacent decade (decade before or after)
+  // ~2 from adjacent decade
   shuffle(pool.filter(s => {
     const d = Math.floor((s.releaseYear||2000)/10)*10;
     return (d === correctDecade - 10 || d === correctDecade + 10) && !used.has(s.id);
   })).slice(0, 2).forEach(tryAdd);
 
-  // Fill rest with random from entire pool
+  // Fill rest randomly from same-language pool
   shuffle(pool.filter(s => !used.has(s.id))).forEach(tryAdd);
 
-  while (distractors.length < TILES - 1) {
-    distractors.push({ id: 'ph_' + distractors.length, title: '— Unknown —', artist: '—' });
+  // If still not enough — repeat same decade (relaxed filter) rather than Unknown
+  if (distractors.length < TILES - 1) {
+    shuffle(pool.filter(s => !used.has(s.id))).forEach(tryAdd);
+  }
+
+  // Last resort: duplicate artist from pool (still same language, no Unknown)
+  if (distractors.length < TILES - 1) {
+    const extra = shuffle(pool).filter(s => !used.has(s.id));
+    extra.forEach(tryAdd);
   }
 
   return shuffle([
