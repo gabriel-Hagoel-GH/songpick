@@ -125,6 +125,7 @@ function makeRoom(hostId, hostName) {
     roundCount: 5,
     tileCount: DEFAULT_TILES,
     roundDuration: DEFAULT_DURATION,
+    theme: 'default',
     timerEnd: null, timerInterval: null, timerRunning: false,
     correctCount: 0,
     selectedGenres: [], selectedDecades: [], israeliMode: false,
@@ -148,7 +149,7 @@ function broadcastRoom(room) {
     phase: room.phase, players: roomPlayers(room),
     currentSongIdx: room.currentSongIdx, roundCount: room.roundCount,
     selectedGenres: room.selectedGenres, selectedDecades: room.selectedDecades,
-    israeliMode: room.israeliMode, tileCount: room.tileCount, roundDuration: room.roundDuration,
+    israeliMode: room.israeliMode, tileCount: room.tileCount, roundDuration: room.roundDuration, theme: room.theme,
   });
 }
 
@@ -245,17 +246,17 @@ io.on('connection', socket => {
 
     if (room.phase !== 'lobby') {
       // Late join — send current game state so they can play from here
-      socket.emit('game_start', { roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount });
+      socket.emit('game_start', { roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount, theme: room.theme });
     }
 
     broadcastRoom(room);
     io.to(room.code).emit('player_joined', { name });
   });
 
-  socket.on('set_config', ({ roundCount, selectedGenres, selectedDecades, israeliMode, tileCount, roundDuration }) => {
+  socket.on('set_config', ({ roundCount, selectedGenres, selectedDecades, israeliMode, tileCount, roundDuration, theme }) => {
     const room = getRoomOf(socket.id);
     if (!room || room.hostId !== socket.id) return;
-    Object.assign(room, { roundCount, selectedGenres, selectedDecades, israeliMode, tileCount, roundDuration });
+    Object.assign(room, { roundCount, selectedGenres, selectedDecades, israeliMode, tileCount, roundDuration, theme });
     broadcastRoom(room);
   });
 
@@ -278,14 +279,15 @@ io.on('connection', socket => {
     room.currentSong = songs[0];
     room.currentOptions = buildOptions(songs[0], songs, room.tileCount);
     resetRound(room);
-    io.to(room.code).emit('game_start', { roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount });
+    io.to(room.code).emit('game_start', { roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount, theme: room.theme });
     broadcastRoom(room);
   });
 
   socket.on('song_playing', () => {
     const room = getRoomOf(socket.id);
     if (!room || room.hostId !== socket.id || room.timerRunning) return;
-    const duration = room.extraTime ? EXTRA_DURATION : (room.roundDuration || DEFAULT_DURATION);
+    const base = room.roundDuration || DEFAULT_DURATION;
+    const duration = room.extraTime ? base + EXTRA_DURATION : base;
     room.extraTime = false;
     startTimer(room, duration);
     io.to(room.code).emit('song_playing');
@@ -306,7 +308,8 @@ io.on('connection', socket => {
     room.phase = 'playing';
     room.extraTime = true;
     resetRound(room);
-    io.to(room.code).emit('extra_time', { duration: EXTRA_DURATION });
+    const totalDuration = (room.roundDuration || DEFAULT_DURATION) + EXTRA_DURATION;
+    io.to(room.code).emit('extra_time', { duration: totalDuration });
     broadcastRoom(room);
   });
 
@@ -329,7 +332,7 @@ io.on('connection', socket => {
     room.currentOptions = buildOptions(room.currentSong, room.songs, room.tileCount);
     room.phase = 'playing';
     resetRound(room);
-    io.to(room.code).emit('next_song', { songIdx: room.currentSongIdx, roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount });
+    io.to(room.code).emit('next_song', { songIdx: room.currentSongIdx, roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount, theme: room.theme });
     broadcastRoom(room);
   });
 
