@@ -308,6 +308,10 @@ input::placeholder{color:var(--muted)}
       <div class="divider" style="margin:.4rem 0"></div>
       <span class="lbl">Rounds</span>
       <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.25rem" id="roundBtns"></div>
+      <span class="lbl" style="margin-top:.4rem">Tiles per round</span>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.25rem" id="tileCountBtns"></div>
+      <span class="lbl" style="margin-top:.4rem">Round duration</span>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.25rem" id="durationBtns"></div>
     </div>
     <div class="err" id="lobbyErr"></div>
     <button class="btn" id="startGameBtn" onclick="hostStartGame()">Start Game ▶</button>
@@ -537,6 +541,8 @@ let currentSongIdx = 0;
 let currentOptions = []; // 12 tile options for current round
 let myPickIdx = null;    // index of currently selected tile
 let playPosition = 'start'; // 'start' | 'middle'
+let tileCount = 12;         // 8 or 12
+let roundDuration = 20;     // 10, 20, or 30
 let timerDuration = ROUND_DURATION;
 
 // ── PKCE Auth ──────────────────────────────────────────────
@@ -651,17 +657,14 @@ function connectSocket() {
   socket.on('player_joined', ({ name }) => showToast(`${name} joined!`));
   socket.on('player_left',   ({ name }) => showToast(`${name} left`));
 
-  socket.on('game_start', ({ roundCount: rc, options }) => {
+  socket.on('game_start', ({ roundCount: rc, options, roundDuration: rd, tileCount: tc }) => {
     roundCount = rc;
+    if (rd) roundDuration = rd;
+    if (tc) tileCount = tc;
     currentSongIdx = 0;
     currentOptions = options;
     myPickIdx = null;
-    if (isHost) {
-      initHostGame();
-    } else {
-      initPlayerGame(options);
-      // Tiles are visible but disabled — enabled when song_playing arrives
-    }
+    if (isHost) { initHostGame(); } else { initPlayerGame(options); }
   });
 
   socket.on('song_playing', () => {
@@ -732,16 +735,14 @@ function connectSocket() {
     setTimeout(() => showReveal(song, players, isLast), 900);
   });
 
-  socket.on('next_song', ({ songIdx, roundCount: rc, options }) => {
+  socket.on('next_song', ({ songIdx, roundCount: rc, options, roundDuration: rd, tileCount: tc }) => {
     currentSongIdx = songIdx;
     roundCount = rc;
+    if (rd) roundDuration = rd;
+    if (tc) tileCount = tc;
     currentOptions = options;
     myPickIdx = null;
-    if (isHost) {
-      initHostGame();
-    } else {
-      initPlayerGame(options);
-    }
+    if (isHost) { initHostGame(); } else { initPlayerGame(options); }
   });
 
   socket.on('game_over',    ({ players }) => { stopClientTimer(); spotifyPause(); showGameOver(players); });
@@ -813,11 +814,35 @@ function buildLobby() {
     rb.appendChild(b);
   }
   roundCount = 5;
+
+  // Tile count picker
+  const tc = document.getElementById('tileCountBtns'); tc.innerHTML = '';
+  [12, 8].forEach(n => {
+    const b = document.createElement('button');
+    b.className = 'btn sec round-btn' + (n===12?' active':'');
+    b.textContent = n + ' tiles'; b.dataset.n = n;
+    b.onclick = () => { document.querySelectorAll('.tile-count-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); tileCount = n; sendConfig(); };
+    b.classList.add('tile-count-btn');
+    tc.appendChild(b);
+  });
+  tileCount = 12;
+
+  // Duration picker
+  const dc = document.getElementById('durationBtns'); dc.innerHTML = '';
+  [10, 20, 30].forEach(n => {
+    const b = document.createElement('button');
+    b.className = 'btn sec round-btn' + (n===20?' active':'');
+    b.textContent = n + 's'; b.dataset.n = n;
+    b.onclick = () => { document.querySelectorAll('.dur-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); roundDuration = n; sendConfig(); };
+    b.classList.add('dur-btn');
+    dc.appendChild(b);
+  });
+  roundDuration = 20;
 }
 
 function sendConfig() {
   if (!socket) return;
-  socket.emit('set_config', { roundCount, selectedGenres, selectedDecades, israeliMode });
+  socket.emit('set_config', { roundCount, selectedGenres, selectedDecades, israeliMode, tileCount, roundDuration });
 }
 
 function renderLobbyPlayers(players) {
@@ -932,17 +957,10 @@ function initHostGame() {
   document.getElementById('hostOpenSpotify').style.display = 'none';
   document.getElementById('hostStatusPill').textContent = 'Click ▶ Play to start the round';
   document.getElementById('hostStatusPill').className = 'pill purple';
-  updateHostTimer(ROUND_DURATION, ROUND_DURATION);
-  // Render tiles for host — correct tile glows green so host knows what's playing
+  updateHostTimer(roundDuration, roundDuration);
+  // Host plays blind — tiles without answer highlight
   renderHostTiles(currentOptions);
-  // Show correct answer text too
-  if (currentOptions.length) {
-    const correct = currentOptions.find(o => o.isCorrect);
-    if (correct) {
-      document.getElementById('hostCorrectAnswer').textContent = `🎵 ${correct.title} — ${correct.artist}`;
-      document.getElementById('hostCorrectAnswer').style.display = 'block';
-    }
-  }
+  document.getElementById('hostCorrectAnswer').style.display = 'none';
 }
 
 async function hostPlayClip() {
@@ -1003,7 +1021,7 @@ function initPlayerGame(options) {
   document.getElementById('playerStatusPill').textContent = 'Waiting for host to play…';
   document.getElementById('playerStatusPill').className = 'pill purple';
   document.getElementById('playerPickedMsg').style.display = 'none';
-  updatePlayerTimer(ROUND_DURATION, ROUND_DURATION);
+  updatePlayerTimer(roundDuration, roundDuration);
   renderTiles(options, false);
 }
 
@@ -1016,11 +1034,14 @@ function setPlayPosition(pos) {
 function renderHostTiles(options) {
   const grid = document.getElementById('hostTileGrid');
   if (!grid) return;
+  // Set columns based on tile count
+  const cols = options.length <= 8 ? 2 : 3;
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
   grid.innerHTML = '';
   options.forEach((opt, i) => {
     const tile = document.createElement('div');
-    // Host can see correct tile highlighted AND can click to submit their own pick
-    tile.className = 'tile' + (opt.isCorrect ? ' correct' : '');
+    // Host plays blind — no correct answer shown
+    tile.className = 'tile';
     tile.dataset.idx = i;
     tile.innerHTML = `<div class="tile-title">${esc(opt.title)}</div><div class="tile-artist">${esc(opt.artist)}</div>`;
     tile.onclick = () => onHostTilePick(i);
@@ -1030,6 +1051,8 @@ function renderHostTiles(options) {
 
 function renderTiles(options, enabled) {
   const grid = document.getElementById('playerTileGrid'); grid.innerHTML = '';
+  const cols = options.length <= 8 ? 2 : 3;
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
   options.forEach((opt, i) => {
     const tile = document.createElement('div');
     tile.className = 'tile disabled';
