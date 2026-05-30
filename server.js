@@ -6,7 +6,9 @@ const fs = require('fs');
 
 const app = express();
 const httpServer = http.createServer(app);
-const io = new Server(httpServer);
+const io = new Server(httpServer, {
+  maxHttpBufferSize: 5e6 // 5MB — songs payload can be large
+});
 const PORT = process.env.PORT || 8888;
 const ROOT = path.join(__dirname, 'public');
 const INDEX = path.join(ROOT, 'index.html');
