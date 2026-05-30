@@ -21,12 +21,69 @@
   --title-font:'Syne',sans-serif;--body-font:'DM Sans',sans-serif;
   --shadow:0 20px 60px rgba(0,0,0,.8);
 }
+
+/* ── THEME SKINS ──────────────────────────────────────────── */
+[data-theme="candy"]{
+  --bg:#FFF8F0;--bg2:#FFFFFF;--bg3:#F3F4F6;
+  --accent:#7C3AED;--accent2:#8B5CF6;--accent3:#6D28D9;
+  --green:#059669;--red:#DC2626;--gold:#D97706;
+  --text:#111827;--muted:#9CA3AF;--border:#E5E7EB;
+  --tile-bg:#FFFFFF;--tile-border:#E5E7EB;
+  --tile-sel-bg:#EDE9FE;--tile-sel-border:#7C3AED;--tile-sel-shadow:0 0 0 2px rgba(124,58,237,.25);
+  --tile-cor-bg:#D1FAE5;--tile-cor-border:#10B981;--tile-shadow:0 1px 3px rgba(0,0,0,.08);
+}
+[data-theme="navy"]{
+  --bg:#0F172A;--bg2:#1E293B;--bg3:#1E293B;
+  --accent:#38BDF8;--accent2:#38BDF8;--accent3:#7DD3FC;
+  --green:#34D399;--red:#F87171;--gold:#FBBF24;
+  --text:#F1F5F9;--muted:#64748B;--border:#334155;
+  --tile-bg:#1E293B;--tile-border:#334155;
+  --tile-sel-bg:#1D4ED8;--tile-sel-border:#3B82F6;--tile-sel-shadow:0 0 10px rgba(59,130,246,.3);
+  --tile-cor-bg:#065F46;--tile-cor-border:#34D399;--tile-shadow:none;
+}
+[data-theme="sunset"]{
+  --bg:#FFFBF5;--bg2:#FFFFFF;--bg3:#FEF3C7;
+  --accent:#F97316;--accent2:#EA580C;--accent3:#C2410C;
+  --green:#16A34A;--red:#DC2626;--gold:#D97706;
+  --text:#111827;--muted:#9CA3AF;--border:#FDE68A;
+  --tile-bg:#FFFFFF;--tile-border:transparent;
+  --tile-sel-bg:#FEF3C7;--tile-sel-border:#F97316;--tile-sel-shadow:0 0 0 2.5px #F97316;
+  --tile-cor-bg:#D1FAE5;--tile-cor-border:#10B981;--tile-shadow:none;
+}
+[data-theme="obsidian"]{
+  --bg:#0D0D14;--bg2:#1C1C2E;--bg3:#14141F;
+  --accent:#8B5CF6;--accent2:#A78BFA;--accent3:#C4B5FD;
+  --green:#34D399;--red:#F87171;--gold:#FBBF24;
+  --text:#E2E8F0;--muted:#64748B;--border:rgba(255,255,255,.07);
+  --tile-bg:#1C1C2E;--tile-border:rgba(255,255,255,.07);
+  --tile-sel-bg:#3B1F6B;--tile-sel-border:#8B5CF6;--tile-sel-shadow:2px 3px 10px rgba(0,0,0,.7),0 0 12px rgba(139,92,246,.25);
+  --tile-cor-bg:#064E3B;--tile-cor-border:#34D399;--tile-shadow:2px 3px 8px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);
+}
+[data-theme="frosted"]{
+  --bg:#F0F4FF;--bg2:#FFFFFF;--bg3:#EEF2FF;
+  --accent:#4338CA;--accent2:#4F46E5;--accent3:#6366F1;
+  --green:#059669;--red:#DC2626;--gold:#D97706;
+  --text:#1E1B4B;--muted:#9CA3AF;--border:#C7D2FE;
+  --tile-bg:#FFFFFF;--tile-border:#E0E7FF;
+  --tile-sel-bg:#EEF2FF;--tile-sel-border:#818CF8;--tile-sel-shadow:0 2px 0 #818CF8,0 4px 10px rgba(99,102,241,.2);
+  --tile-cor-bg:#ECFDF5;--tile-cor-border:#6EE7B7;--tile-shadow:0 1px 0 #C7D2FE,0 3px 8px rgba(99,102,241,.08);
+}
+[data-theme="arcade"]{
+  --bg:#08090F;--bg2:#0F1117;--bg3:#0F1117;
+  --accent:#22D3EE;--accent2:#06B6D4;--accent3:#67E8F9;
+  --green:#4ADE80;--red:#F87171;--gold:#FCD34D;
+  --text:#F1F5F9;--muted:#475569;--border:#1E293B;
+  --tile-bg:#0F1117;--tile-border:#1E293B;
+  --tile-sel-bg:#0F1117;--tile-sel-border:#F59E0B;--tile-sel-shadow:0 0 8px rgba(245,158,11,.4),inset 0 1px 0 rgba(245,158,11,.1);
+  --tile-cor-bg:#0F1117;--tile-cor-border:#4ADE80;--tile-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
 html,body{height:100%;overflow:hidden}
 body{background:#000;display:flex;align-items:center;justify-content:center;font-family:var(--body-font);color:var(--text)}
 
 #app{
   background:var(--bg);width:100%;max-width:480px;height:100vh;max-height:860px;
   overflow:hidden;display:flex;flex-direction:column;position:relative;
+  transition:background .3s;
 }
 @media(min-width:500px){#app{border-radius:20px;height:95vh;box-shadow:var(--shadow)}}
 
@@ -139,10 +196,11 @@ input::placeholder{color:var(--muted)}
   display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;width:100%;margin:.2rem 0;
 }
 .tile{
-  background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;
+  background:var(--tile-bg,var(--bg2));border:1.5px solid var(--tile-border,var(--border));border-radius:10px;
   padding:.45rem .35rem;cursor:pointer;text-align:center;transition:all .15s;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   min-height:58px;position:relative;overflow:hidden;user-select:none;
+  box-shadow:var(--tile-shadow,none);
 }
 .tile::before{
   content:'';position:absolute;inset:0;
@@ -152,12 +210,14 @@ input::placeholder{color:var(--muted)}
 .tile:hover::before{opacity:1}
 .tile:active{transform:scale(.95)}
 .tile.selected{
-  border-color:var(--accent2);background:rgba(124,58,237,.18);
-  box-shadow:0 0 0 2px rgba(124,58,237,.3);
+  border-color:var(--tile-sel-border,var(--accent2));
+  background:var(--tile-sel-bg,rgba(124,58,237,.18));
+  box-shadow:var(--tile-sel-shadow,0 0 0 2px rgba(124,58,237,.3));
 }
 .tile.selected::before{opacity:1}
 .tile.correct{
-  border-color:var(--green);background:rgba(34,197,94,.18);
+  border-color:var(--tile-cor-border,var(--green));
+  background:var(--tile-cor-bg,rgba(34,197,94,.18));
   box-shadow:0 0 0 2px rgba(34,197,94,.3);animation:correctPop .4s ease-out;
 }
 .tile.wrong{
@@ -213,6 +273,17 @@ input::placeholder{color:var(--muted)}
 .spinner{width:34px;height:34px;border:3px solid var(--bg3);border-top-color:var(--accent2);
   border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Theme picker ── */
+.theme-card{
+  border-radius:10px;padding:.6rem .5rem;cursor:pointer;text-align:center;
+  border:2px solid transparent;transition:all .15s;user-select:none;
+}
+.theme-card.active{border-color:var(--accent2);}
+.theme-card-swatch{display:flex;gap:3px;justify-content:center;margin-bottom:.35rem}
+.theme-card-dot{width:10px;height:10px;border-radius:50%}
+.theme-card-name{font-size:.7rem;font-weight:600;color:var(--text)}
+.theme-card-sub{font-size:.6rem;color:var(--muted)}
 
 /* ── Accordion ── */
 .acc-row{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;cursor:pointer;transition:background .15s;user-select:none}
@@ -359,8 +430,21 @@ input::placeholder{color:var(--muted)}
         <div style="display:flex;gap:.3rem;flex-wrap:wrap" id="durationBtns"></div>
       </div>
 
+      <div class="acc-divider"></div>
+
+      <!-- Theme accordion -->
+      <div class="acc-row" id="accTheme" onclick="toggleAcc('theme')">
+        <div class="acc-left">
+          <span class="acc-title">🎨 Theme</span>
+          <span class="acc-sub" id="summTheme">Candy Pop</span>
+        </div>
+        <svg class="acc-chev" id="chevTheme" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="acc-body" id="bodyTheme" style="display:none;padding:.6rem">
+        <div id="themeGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem"></div>
+      </div>
+
     </div>
-    <div class="err" id="lobbyErr"></div>
     <button class="btn" id="startGameBtn" onclick="hostStartGame()">Start Game ▶</button>
     <button class="btn sec" style="margin-top:.4rem;font-size:.78rem" onclick="leaveRoom()">Leave Room</button>
   </div>
@@ -587,9 +671,62 @@ let currentSongs = [];
 let currentSongIdx = 0;
 let currentOptions = []; // 12 tile options for current round
 let myPickIdx = null;    // index of currently selected tile
-let playPosition = 'start'; // 'start' | 'middle'
-let tileCount = 12;         // 8 or 12
-let roundDuration = 20;     // 10, 20, or 30
+let playPosition = 'start';
+let tileCount = 12;
+let roundDuration = 20;
+let currentTheme = 'default';
+
+const THEMES = [
+  { id:'default', name:'Original',      sub:'Purple dark',
+    dots:['#7c3aed','#12121a','#a855f7'] },
+  { id:'candy',   name:'Candy Pop',     sub:'White · purple',
+    dots:['#7C3AED','#FFFFFF','#059669'] },
+  { id:'navy',    name:'Deep Navy',     sub:'Dark · sky blue',
+    dots:['#0F172A','#38BDF8','#34D399'] },
+  { id:'sunset',  name:'Sunset Warm',   sub:'Cream · orange',
+    dots:['#FFFBF5','#F97316','#16A34A'] },
+  { id:'obsidian',name:'Obsidian Glass',sub:'Black · purple 3D',
+    dots:['#0D0D14','#8B5CF6','#34D399'] },
+  { id:'frosted', name:'Frosted Paper', sub:'Blue · lifted tiles',
+    dots:['#F0F4FF','#4338CA','#059669'] },
+  { id:'arcade',  name:'Neon Arcade',   sub:'Black · cyan glow',
+    dots:['#08090F','#22D3EE','#4ADE80'] },
+];
+
+function setTheme(id) {
+  currentTheme = id;
+  const app = document.getElementById('app');
+  if (id === 'default') {
+    app.removeAttribute('data-theme');
+  } else {
+    app.setAttribute('data-theme', id);
+  }
+  const t = THEMES.find(x => x.id === id);
+  document.getElementById('summTheme').textContent = t ? t.name : 'Original';
+  document.querySelectorAll('.theme-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.theme === id);
+  });
+}
+
+function buildThemePicker() {
+  const grid = document.getElementById('themeGrid'); grid.innerHTML = '';
+  THEMES.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'theme-card' + (t.id === currentTheme ? ' active' : '');
+    card.dataset.theme = t.id;
+    card.innerHTML = `
+      <div class="theme-card-swatch">
+        ${t.dots.map(c=>`<div class="theme-card-dot" style="background:${c}"></div>`).join('')}
+      </div>
+      <div class="theme-card-name">${t.name}</div>
+      <div class="theme-card-sub">${t.sub}</div>`;
+    card.onclick = () => setTheme(t.id);
+    // Give each card a preview bg based on its first dot color
+    card.style.background = t.id === 'default' ? '#12121a' : t.dots[0];
+    card.style.borderRadius = '10px';
+    grid.appendChild(card);
+  });
+}
 let timerDuration = ROUND_DURATION;
 
 // ── PKCE Auth ──────────────────────────────────────────────
@@ -831,8 +968,9 @@ function leaveRoom() {
 
 // ── Lobby ──────────────────────────────────────────────────
 function toggleAcc(name) {
-  const body  = document.getElementById('body' + name.charAt(0).toUpperCase() + name.slice(1));
-  const chev  = document.getElementById('chev' + name.charAt(0).toUpperCase() + name.slice(1));
+  const key = name.charAt(0).toUpperCase() + name.slice(1);
+  const body = document.getElementById('body' + key);
+  const chev = document.getElementById('chev' + key);
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'block';
   chev.classList.toggle('open', !isOpen);
@@ -926,6 +1064,7 @@ function buildLobby() {
   });
 
   updateSummaries();
+  buildThemePicker();
 }
 
 function sendConfig() {
