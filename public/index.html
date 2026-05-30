@@ -693,7 +693,7 @@ const THEMES = [
     dots:['#08090F','#22D3EE','#4ADE80'] },
 ];
 
-function setTheme(id) {
+function setTheme(id, silent = false) {
   currentTheme = id;
   const app = document.getElementById('app');
   if (id === 'default') { app.removeAttribute('data-theme'); }
@@ -702,8 +702,8 @@ function setTheme(id) {
   const summEl = document.getElementById('summTheme');
   if (summEl) summEl.textContent = t ? t.name : 'Original';
   document.querySelectorAll('.theme-card').forEach(c => c.classList.toggle('active', c.dataset.theme === id));
-  // If host, broadcast to players
-  if (isHost && socket) sendConfig();
+  // Only broadcast when host changes it locally (not when receiving from server)
+  if (!silent && isHost && socket) sendConfig();
 }
 
 function buildThemePicker() {
@@ -827,7 +827,7 @@ function connectSocket() {
 
   socket.on('room_update', ({ phase, players, currentSongIdx: si, roundCount: rc, selectedGenres: sg, selectedDecades: sd, israeliMode: im, tileCount: tc, roundDuration: rd, theme: th }) => {
     if (rc) roundCount = rc;
-    if (th && !isHost) setTheme(th); // players follow host theme
+    if (th) setTheme(th, true); // silent — from server
     document.getElementById('playerCount').textContent = players.length;
     renderLobbyPlayers(players);
     renderPlayerLobbyList(players);
@@ -844,7 +844,7 @@ function connectSocket() {
     roundCount = rc;
     if (rd) roundDuration = rd;
     if (tc) tileCount = tc;
-    if (th && !isHost) setTheme(th);
+    if (th) setTheme(th, true); // silent — from server
     currentSongIdx = 0;
     currentOptions = options;
     myPickIdx = null;
@@ -1068,7 +1068,7 @@ function buildLobby() {
 }
 
 function sendConfig() {
-  if (!socket) return;
+  if (!socket || !isHost) return; // players must never send config
   socket.emit('set_config', { roundCount, selectedGenres, selectedDecades, israeliMode, tileCount, roundDuration, theme: currentTheme });
 }
 
@@ -1105,7 +1105,14 @@ async function hostStartGame() {
   document.getElementById('startGameBtn').textContent = 'Start Game ▶';
   if (!songs.length) { showErr('lobbyErr','No songs found — try different filters'); return; }
   currentSongs = songs;
-  socket.emit('songs_ready', { songs });
+  // Strip albumArt from songs sent to server (reduces payload size significantly)
+  // albumArt is only needed for reveal, which the host reconstructs from currentSongs
+  const songsForServer = songs.map(s => ({
+    id: s.id, title: s.title, artist: s.artist, uri: s.uri,
+    releaseYear: s.releaseYear, durationMs: s.durationMs,
+    popularity: s.popularity, lang: s.lang, albumArt: s.albumArt
+  }));
+  socket.emit('songs_ready', { songs: songsForServer });
 }
 
 async function fetchSongs() {
