@@ -696,16 +696,14 @@ const THEMES = [
 function setTheme(id) {
   currentTheme = id;
   const app = document.getElementById('app');
-  if (id === 'default') {
-    app.removeAttribute('data-theme');
-  } else {
-    app.setAttribute('data-theme', id);
-  }
+  if (id === 'default') { app.removeAttribute('data-theme'); }
+  else { app.setAttribute('data-theme', id); }
   const t = THEMES.find(x => x.id === id);
-  document.getElementById('summTheme').textContent = t ? t.name : 'Original';
-  document.querySelectorAll('.theme-card').forEach(c => {
-    c.classList.toggle('active', c.dataset.theme === id);
-  });
+  const summEl = document.getElementById('summTheme');
+  if (summEl) summEl.textContent = t ? t.name : 'Original';
+  document.querySelectorAll('.theme-card').forEach(c => c.classList.toggle('active', c.dataset.theme === id));
+  // If host, broadcast to players
+  if (isHost && socket) sendConfig();
 }
 
 function buildThemePicker() {
@@ -827,8 +825,9 @@ function connectSocket() {
 
   socket.on('error', msg => { hideLoading(); showToast(msg); showErr('joinErr', msg); });
 
-  socket.on('room_update', ({ phase, players, currentSongIdx: si, roundCount: rc, selectedGenres: sg, selectedDecades: sd, israeliMode: im }) => {
+  socket.on('room_update', ({ phase, players, currentSongIdx: si, roundCount: rc, selectedGenres: sg, selectedDecades: sd, israeliMode: im, tileCount: tc, roundDuration: rd, theme: th }) => {
     if (rc) roundCount = rc;
+    if (th && !isHost) setTheme(th); // players follow host theme
     document.getElementById('playerCount').textContent = players.length;
     renderLobbyPlayers(players);
     renderPlayerLobbyList(players);
@@ -841,10 +840,11 @@ function connectSocket() {
   socket.on('player_joined', ({ name }) => showToast(`${name} joined!`));
   socket.on('player_left',   ({ name }) => showToast(`${name} left`));
 
-  socket.on('game_start', ({ roundCount: rc, options, roundDuration: rd, tileCount: tc }) => {
+  socket.on('game_start', ({ roundCount: rc, options, roundDuration: rd, tileCount: tc, theme: th }) => {
     roundCount = rc;
     if (rd) roundDuration = rd;
     if (tc) tileCount = tc;
+    if (th && !isHost) setTheme(th);
     currentSongIdx = 0;
     currentOptions = options;
     myPickIdx = null;
@@ -1069,7 +1069,7 @@ function buildLobby() {
 
 function sendConfig() {
   if (!socket) return;
-  socket.emit('set_config', { roundCount, selectedGenres, selectedDecades, israeliMode, tileCount, roundDuration });
+  socket.emit('set_config', { roundCount, selectedGenres, selectedDecades, israeliMode, tileCount, roundDuration, theme: currentTheme });
 }
 
 function renderLobbyPlayers(players) {
