@@ -330,7 +330,7 @@ input::placeholder{color:var(--muted)}
 </head>
 <body>
 <div id="toast"></div>
-<div id="loadingOverlay" style="display:none;position:absolute;inset:0;background:rgba(10,10,15,.88);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:1rem">
+<div id="loadingOverlay">
   <div class="spinner"></div>
   <p style="color:var(--muted);font-size:.82rem" id="loadingMsg">Loading…</p>
 </div>
@@ -878,7 +878,6 @@ function connectSocket() {
       document.getElementById('hostWave').classList.add('off');
       document.getElementById('hostStatusPill').textContent = 'Everyone picked — calculating…';
       document.getElementById('hostStatusPill').className = 'pill amber';
-      document.querySelectorAll('#hostTileGrid .tile').forEach(t => t.classList.add('disabled'));
     } else {
       disableTiles();
       document.getElementById('playerWave').classList.add('off');
@@ -1125,8 +1124,24 @@ async function hostStartGame() {
   if (!tok) { showErr('lobbyErr','Not connected to Spotify — go back and log in'); return; }
   accessToken = tok;
 
-  btn.disabled = true; btn.textContent = 'Fetching songs…';
+  btn.disabled = true; btn.textContent = 'Checking Spotify…';
   errEl.textContent = '';
+
+  // Step 3: verify token with Spotify
+  let meRes;
+  try {
+    meRes = await spotifyFetch('https://api.spotify.com/v1/me');
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Start Game ▶';
+    showErr('lobbyErr', '❌ Network error reaching Spotify: ' + e.message); return;
+  }
+  if (!meRes.ok) {
+    btn.disabled = false; btn.textContent = 'Start Game ▶';
+    showErr('lobbyErr', `❌ Spotify auth failed (${meRes.status}) — go back and log in again`); return;
+  }
+
+  // Step 4: fetch songs
+  btn.textContent = 'Fetching songs…';
   socket.emit('set_status', { status: 'loading' });
 
   let songs = [];
@@ -1183,15 +1198,6 @@ async function fetchSongs() {
       }
     }
     await Promise.all(promises);
-    // Fallback: if pool too small, search without year filter
-    if (allTracks.length < 20 && !israeliMode) {
-      const fallback = [];
-      for (const genre of selectedGenres) {
-        const queries = GENRE_QUERIES[genre] || [genre];
-        queries.slice(0,2).forEach(q => fallback.push(searchTracks(q, 0, allTracks, true)));
-      }
-      await Promise.all(fallback);
-    }
   }
   const fresh = allTracks.filter(t => !playedIds.has(t.id));
   const shuffled = shuffleArr(fresh);
@@ -1226,7 +1232,7 @@ async function searchTracks(q, year, allTracks, ignoreDecade, limit = 10) {
 async function fetchRecommendations(genre, year, allTracks) {
   const seed = GENRE_SEEDS[genre]; if (!seed) return;
   try {
-    const params = new URLSearchParams({ seed_genres:seed, limit:10, target_popularity:70, min_popularity:40 });
+    const params = new URLSearchParams({ seed_genres:seed, limit:10, market:'IL', target_popularity:70, min_popularity:40 });
     const r = await spotifyFetch(`https://api.spotify.com/v1/recommendations?${params}`);
     if (!r || !r.ok) return;
     const data = await r.json();
@@ -1396,8 +1402,7 @@ function onTilePick(idx) {
 }
 
 function highlightTiles(correctIdx) {
-  const selector = isHost ? '#hostTileGrid .tile' : '#playerTileGrid .tile';
-  document.querySelectorAll(selector).forEach((t, i) => {
+  document.querySelectorAll('#playerTileGrid .tile').forEach((t, i) => {
     t.classList.remove('selected');
     t.classList.add('disabled');
     if (i === correctIdx) { t.classList.add('correct'); }
