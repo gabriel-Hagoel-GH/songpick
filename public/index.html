@@ -144,8 +144,8 @@ input::placeholder{color:var(--muted)}
 .pgrid{display:grid;gap:.3rem;width:100%;margin-bottom:.5rem}
 .g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
 .pick{background:var(--bg3);border:1.5px solid var(--border);color:var(--muted);
-  padding:.4rem .2rem;border-radius:6px;font-size:.72rem;cursor:pointer;text-align:center;
-  transition:all .15s;font-family:var(--body-font)}
+  padding:.25rem .2rem;border-radius:6px;font-size:.67rem;cursor:pointer;text-align:center;
+  transition:all .15s;font-family:var(--body-font);line-height:1.2}
 .pick.on{background:rgba(124,58,237,.18);border-color:var(--accent2);color:var(--accent3)}
 
 /* ── Room code ── */
@@ -286,19 +286,19 @@ input::placeholder{color:var(--muted)}
 .theme-card-sub{font-size:.6rem;color:var(--muted)}
 
 /* ── Accordion ── */
-.acc-row{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;cursor:pointer;transition:background .15s;user-select:none}
+.acc-row{display:flex;align-items:center;justify-content:space-between;padding:.55rem .85rem;cursor:pointer;transition:background .15s;user-select:none}
 .acc-row:hover{background:var(--bg3)}
-.acc-left{display:flex;flex-direction:column;gap:.15rem}
-.acc-title{font-size:.88rem;font-weight:600;color:var(--text)}
-.acc-sub{font-size:.7rem;color:var(--accent3)}
+.acc-left{display:flex;flex-direction:column;gap:.1rem}
+.acc-title{font-size:.82rem;font-weight:600;color:var(--text)}
+.acc-sub{font-size:.65rem;color:var(--accent3)}
 .acc-sub.empty{color:var(--muted)}
-.acc-chev{width:16px;height:16px;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.acc-chev{width:14px;height:14px;color:var(--muted);transition:transform .2s;flex-shrink:0}
 .acc-chev.open{transform:rotate(180deg)}
 .acc-body{background:var(--bg3);border-top:1px solid var(--border)}
 .acc-divider{height:1px;background:var(--border)}
 
 /* ── Round buttons ── */
-.round-btn{padding:.38rem .7rem;font-size:.8rem;width:auto}
+.round-btn{padding:.28rem .55rem;font-size:.73rem;width:auto}
 .round-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 /* ── Divider ── */
@@ -374,16 +374,16 @@ input::placeholder{color:var(--muted)}
   </div>
 
   <!-- ══ LOBBY (HOST) ══ -->
-  <div class="screen" id="sLobby">
-    <h2 style="margin-bottom:.1rem">Game Lobby</h2>
-    <p class="sub" style="margin-bottom:.4rem">Share this code:</p>
+  <div class="screen" id="sLobby" style="padding:.6rem .7rem">
+    <h2 style="margin-bottom:.05rem;font-size:1.4rem">Game Lobby</h2>
+    <p class="sub" style="margin-bottom:.2rem;font-size:.72rem">Share this code:</p>
     <div class="room-code" id="lobbyCode" style="cursor:pointer" onclick="copyCode()" title="Tap to copy">----</div>
-    <p style="font-size:.68rem;color:var(--muted);margin:.25rem 0 .75rem">Tap to copy</p>
+    <p style="font-size:.62rem;color:var(--muted);margin:.1rem 0 .35rem">Tap to copy</p>
     <div class="card">
       <span class="lbl">Players (<span id="playerCount">1</span>)</span>
       <div id="lobbyPlayers"></div>
     </div>
-    <div class="card" id="hostConfig" style="padding:0;overflow:hidden">
+    <div class="card" id="hostConfig" style="padding:0;overflow:hidden;margin-bottom:.4rem">
 
       <!-- Genre accordion -->
       <div class="acc-row" id="accGenre" onclick="toggleAcc('genre')">
@@ -394,7 +394,7 @@ input::placeholder{color:var(--muted)}
         <svg class="acc-chev" id="chevGenre" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="acc-body" id="bodyGenre" style="display:none">
-        <div class="pgrid g3" id="genreGrid" style="padding:.6rem"></div>
+        <div class="pgrid g3" id="genreGrid" style="padding:.45rem;grid-template-columns:repeat(3,1fr)"></div>
       </div>
 
       <div class="acc-divider"></div>
@@ -408,7 +408,7 @@ input::placeholder{color:var(--muted)}
         <svg class="acc-chev" id="chevDecade" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="acc-body" id="bodyDecade" style="display:none">
-        <div class="pgrid g4" id="decadeGrid" style="padding:.6rem"></div>
+        <div class="pgrid g4" id="decadeGrid" style="padding:.45rem"></div>
       </div>
 
       <div class="acc-divider"></div>
@@ -421,13 +421,13 @@ input::placeholder{color:var(--muted)}
         </div>
         <svg class="acc-chev" id="chevSettings" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <div class="acc-body" id="bodySettings" style="display:none;padding:.6rem">
-        <span class="lbl">Rounds</span>
-        <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.6rem" id="roundBtns"></div>
-        <span class="lbl">Tiles per round</span>
-        <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.6rem" id="tileCountBtns"></div>
-        <span class="lbl">Round duration</span>
-        <div style="display:flex;gap:.3rem;flex-wrap:wrap" id="durationBtns"></div>
+      <div class="acc-body" id="bodySettings" style="display:none;padding:.45rem">
+        <span class="lbl" style="font-size:.6rem">Rounds</span>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-bottom:.4rem" id="roundBtns"></div>
+        <span class="lbl" style="font-size:.6rem">Tiles per round</span>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-bottom:.4rem" id="tileCountBtns"></div>
+        <span class="lbl" style="font-size:.6rem">Round duration</span>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap" id="durationBtns"></div>
       </div>
 
       <div class="acc-divider"></div>
@@ -440,7 +440,7 @@ input::placeholder{color:var(--muted)}
         </div>
         <svg class="acc-chev" id="chevTheme" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <div class="acc-body" id="bodyTheme" style="display:none;padding:.6rem">
+      <div class="acc-body" id="bodyTheme" style="display:none;padding:.45rem">
         <div id="themeGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem"></div>
       </div>
 
@@ -628,6 +628,7 @@ const REDIRECT_URI = window.location.origin + '/';
 const SCOPES = 'user-read-email user-read-private user-modify-playback-state user-read-playback-state';
 
 const GENRES = ['Pop','Rock','Hip-Hop','R&B','Electronic','Latin','Disney','Movie Hits','Viral Hits','One Hit Wonders'];
+const ISRAELI_GENRES = ['פופ ישראלי','רוק ישראלי','מזרחי','דאנס ישראלי','קלאסיקות ישראליות','מצעד הפזמונים'];
 const GENRE_QUERIES = {
   'Pop':['pop hits','pop music','top pop','pop chart','pop songs'],
   'Rock':['rock hits','classic rock','rock songs','rock band','rock music'],
@@ -645,14 +646,71 @@ const GENRE_SEEDS = {
   'Electronic':'electronic','Latin':'latin',
   'Disney':null,'Movie Hits':null,'Viral Hits':null,'One Hit Wonders':null
 };
+const ISRAELI_GENRE_QUERIES = {
+  'פופ ישראלי': {
+    '1960s':['אריק לביא','דן אלמגור פופ','להקת הנח"ל שירים','Israeli pop 1960'],
+    '1970s':['שלמה ארצי','גידי גוב','שירי ארץ ישראל 1970','Israeli pop 1970'],
+    '1980s':['ריטה','כוורת','יהודית רביץ','Israeli pop 1980'],
+    '1990s':['עידן רייכל','נינט','ביבי נצר','Israeli pop 1990'],
+    '2000s':['עידן רייכל פרויקט','שירה','סטטיק ובן אל','Israeli pop 2000'],
+    '2010s':['עידן רייכל','נוגה ארז','אסף אבידן','Israeli pop 2010'],
+    '2020s':['ליאור נרקיס 2020','שירה 2020','Israeli pop Israel 2020','ישראלי פופ 2020'],
+    'default':['Israeli pop music','פופ ישראלי','ישראלי פופ','pop israel']
+  },
+  'רוק ישראלי': {
+    '1960s':['להקת הצוללות','חבורת סטלה','Israeli rock 1960','להקת תיסלם'],
+    '1970s':['אריק איינשטיין רוק','שלום חנוך','כוורת 1970','Israeli rock 1970'],
+    '1980s':['צ'ופ'ק','משינה','לה גנג','Israeli rock 1980'],
+    '1990s':['אביב גפן','פורטיס','מיר','Israeli rock 1990'],
+    '2000s':['אהוד בנאי','אסף אבידן','הפרויקט של רביבו','Israeli rock 2000'],
+    '2010s':['הדג נחש','רמי פורטיס','Israeli alternative 2010','רוק ישראלי 2010'],
+    '2020s':['Israeli rock 2020','רוק ישראלי 2020','אינדי ישראלי 2020'],
+    'default':['Israeli rock','רוק ישראלי','rock israel','אריק איינשטיין']
+  },
+  'מזרחי': {
+    '1960s':['זהבה בן','שושנה דמארי','מוזיקה מזרחית','Israeli mizrahi 1960'],
+    '1970s':['אריק עם השפם','חברת הנגב','מזרחי 1970','Israeli oriental 1970'],
+    '1980s':['אייל גולן צעיר','זהבה בן 1980','מזרחי 1980','מוסיקה מזרחית ישראלית'],
+    '1990s':['אייל גולן','אתניקס','מוזיקה מזרחית 1990','mizrahi 1990'],
+    '2000s':['משה פרץ','עומר אדם','מזרחי 2000','mizrahi israel 2000'],
+    '2010s':['עומר אדם','נועה קירל','מזרחי 2010','mizrahi 2010'],
+    '2020s':['עומר אדם 2020','NATAN','mizrahi israel 2020','מזרחי 2020'],
+    'default':['mizrahi music israel','מוזיקה מזרחית','אייל גולן','זהבה בן']
+  },
+  'דאנס ישראלי': {
+    '1990s':['תקווה 6','להיטי מועדון ישראלי 1990','Israeli dance 1990','ריתמי ישראלי'],
+    '2000s':['תקווה 6','הראל מויאל','Israeli dance 2000','dance israel 2000'],
+    '2010s':['NOGA EREZ','סטטיק ובן אל','Israeli EDM 2010','dance israel 2010'],
+    '2020s':['ליאור נרקיס ריתמי','Israeli dance 2020','EDM israel 2020','דאנס ישראלי 2020'],
+    'default':['Israeli dance music','דאנס ישראלי','תקווה 6','ריתמי ישראלי']
+  },
+  'קלאסיקות ישראליות': {
+    '1960s':['נעמי שמר','יהורם גאון','חיים חפר','שירי ארץ ישראל'],
+    '1970s':['שלמה ארצי','דני ליטני','Israeli classics 1970','להיטים ישראליים ישנים'],
+    '1980s':['ריטה','שי גבסו','Israeli classics 1980','ישראלי קלאסי'],
+    '1990s':['Israeli classics 1990','להיטים ישראליים 1990','ישראלי קלאסי 1990'],
+    '2000s':['Israeli classics 2000','שירים ישראליים 2000','ישראלי קלאסי 2000'],
+    'default':['נעמי שמר','Israeli classics','שירים ישראליים ישנים','יהורם גאון','שלמה ארצי']
+  },
+  'מצעד הפזמונים': {
+    '1960s':['מצעד הפזמונים 1965','מצעד הפזמונים 1967','מצעד הפזמונים 1969','Israeli hit parade 1960s'],
+    '1970s':['מצעד הפזמונים 1971','מצעד הפזמונים 1974','מצעד הפזמונים 1977','מצעד הפזמונים 1979'],
+    '1980s':['מצעד הפזמונים 1981','מצעד הפזמונים 1984','מצעד הפזמונים 1987','מצעד הפזמונים 1989'],
+    '1990s':['מצעד הפזמונים 1991','מצעד הפזמונים 1994','מצעד הפזמונים 1997','מצעד הפזמונים 1999'],
+    '2000s':['מצעד הפזמונים 2001','מצעד הפזמונים 2004','מצעד הפזמונים 2007','מצעד הפזמונים 2009'],
+    '2010s':['מצעד הפזמונים 2011','מצעד הפזמונים 2014','מצעד הפזמונים 2017','מצעד הפזמונים 2019'],
+    '2020s':['מצעד הפזמונים 2020','מצעד הפזמונים 2021','מצעד הפזמונים 2022','מצעד הפזמונים 2023'],
+    'default':['מצעד הפזמונים','Israeli hit parade','Israeli chart hits','פזמונים ישראליים']
+  }
+};
 const ISRAELI_HITS = {
-  '1960s':['להיטים ישראליים 1960','שירים ישראליים 1960'],
-  '1970s':['להיטים ישראליים 1970','שירים ישראליים 1970'],
-  '1980s':['להיטים ישראליים 1980','שירים ישראליים 1980'],
-  '1990s':['להיטים ישראליים 1990','שירים ישראליים 1990'],
-  '2000s':['להיטים ישראליים 2000','שירים ישראליים 2000'],
-  '2010s':['להיטים ישראליים 2010','שירים ישראליים 2010'],
-  '2020s':['להיטים ישראליים 2020','ישראלי 2020'],
+  '1960s':['להיטים ישראליים 1960','מוזיקה ישראלית 1960'],
+  '1970s':['להיטים ישראליים 1970','מוזיקה ישראלית 1970'],
+  '1980s':['להיטים ישראליים 1980','מוזיקה ישראלית 1980'],
+  '1990s':['להיטים ישראליים 1990','מוזיקה ישראלית 1990'],
+  '2000s':['להיטים ישראליים 2000','מוזיקה ישראלית 2000'],
+  '2010s':['להיטים ישראליים 2010','מוזיקה ישראלית 2010'],
+  '2020s':['להיטים ישראליים 2020','מוזיקה ישראלית 2020'],
 };
 const DECADES = ['1960s','1970s','1980s','1990s','2000s','2010s','2020s'];
 const MEDALS  = ['🥇','🥈','🥉'];
@@ -871,6 +929,21 @@ function connectSocket() {
     startClientTimer(duration, localEnd);
   });
 
+  socket.on('all_picked', () => {
+    stopClientTimer();
+    if (isHost) {
+      spotifyPause();
+      document.getElementById('hostWave').classList.add('off');
+      document.getElementById('hostStatusPill').textContent = 'Everyone picked — calculating…';
+      document.getElementById('hostStatusPill').className = 'pill amber';
+    } else {
+      disableTiles();
+      document.getElementById('playerWave').classList.add('off');
+      document.getElementById('playerStatusPill').textContent = 'Everyone picked — calculating…';
+      document.getElementById('playerStatusPill').className = 'pill amber';
+    }
+  });
+
   socket.on('no_correct_guesses', () => {
     stopClientTimer();
     if (isHost) {
@@ -1008,13 +1081,19 @@ function buildLobby() {
     };
     gg.appendChild(b);
   });
-  const il = document.createElement('button');
-  il.className = 'pick'; il.textContent = '🇮🇱 Israeli Hits'; il.style.gridColumn = '1/-1';
-  il.onclick = () => {
-    il.classList.toggle('on'); israeliMode = il.classList.contains('on');
-    updateSummaries(); sendConfig();
-  };
-  gg.appendChild(il);
+  // 6 Israeli genre buttons
+  ISRAELI_GENRES.forEach(g => {
+    const b = document.createElement('button'); b.className = 'pick'; b.textContent = '🇮🇱 ' + g;
+    b.onclick = () => {
+      b.classList.toggle('on');
+      israeliMode = true;
+      selectedGenres = b.classList.contains('on') ? [...selectedGenres, g] : selectedGenres.filter(x => x !== g);
+      // israeliMode stays true if any Israeli genre is selected
+      israeliMode = selectedGenres.some(g => ISRAELI_GENRES.includes(g));
+      updateSummaries(); sendConfig();
+    };
+    gg.appendChild(b);
+  });
 
   const dg = document.getElementById('decadeGrid'); dg.innerHTML = '';
   DECADES.forEach(d => {
@@ -1040,7 +1119,7 @@ function buildLobby() {
   }
 
   const tc = document.getElementById('tileCountBtns'); tc.innerHTML = '';
-  [12, 8].forEach(n => {
+  [4, 6, 8, 12].forEach(n => {
     const b = document.createElement('button');
     b.className = 'btn sec round-btn tile-count-btn' + (n===12?' active':'');
     b.textContent = n + ' tiles';
@@ -1118,12 +1197,35 @@ async function hostStartGame() {
 async function fetchSongs() {
   const allTracks = [];
   if (israeliMode) {
+    const israeliGenres = selectedGenres.filter(g => ISRAELI_GENRES.includes(g));
+    const globalGenres  = selectedGenres.filter(g => !ISRAELI_GENRES.includes(g));
+    const promises = [];
     for (const decade of selectedDecades) {
       const year = parseInt(decade);
-      const queries = [...(ISRAELI_HITS[decade]||[]), `להיטים ישראליים ${year}`, `מוזיקה ישראלית ${year}`];
-      await Promise.all(queries.map(q => searchTracks(q, year, allTracks, false)));
-      if (allTracks.length < 8) await Promise.all(queries.slice(0,2).map(q => searchTracks(q, year, allTracks, true)));
+      // Israeli genre-specific queries
+      for (const genre of israeliGenres) {
+        const gq = ISRAELI_GENRE_QUERIES[genre];
+        const qs = gq?.[decade] || gq?.['default'] || ISRAELI_HITS[decade] || [];
+        qs.forEach(q => {
+          promises.push(searchTracks(q, year, allTracks, false, 20));
+          promises.push(searchTracks(q, year, allTracks, true, 20));
+        });
+      }
+      // Fallback: if no Israeli genre selected, use general Israeli Hits
+      if (!israeliGenres.length) {
+        (ISRAELI_HITS[decade] || []).forEach(q => {
+          promises.push(searchTracks(q, year, allTracks, false, 20));
+        });
+      }
+      // Also fetch global genres if any
+      for (const genre of globalGenres) {
+        const queries = GENRE_QUERIES[genre] || [genre];
+        queries.forEach(q => {
+          promises.push(searchTracks(`${q} year:${year}-${year+9}`, year, allTracks, false));
+        });
+      }
     }
+    await Promise.all(promises);
   } else {
     const promises = [];
     for (const decade of selectedDecades) {
@@ -1140,15 +1242,18 @@ async function fetchSongs() {
     await Promise.all(promises);
   }
   const fresh = allTracks.filter(t => !playedIds.has(t.id));
-  fresh.sort((a,b) => b.popularity - a.popularity);
-  const top = fresh.slice(0,120);
+  // Shuffle first so same-popularity songs don't always appear in same order
+  const shuffled = shuffleArr(fresh);
+  // Then sort by popularity but with noise to add variety
+  shuffled.sort((a,b) => (b.popularity + Math.random()*15) - (a.popularity + Math.random()*15));
+  const top = shuffled.slice(0, 120);
   console.log(`Song pool: ${top.length} tracks`);
   return shuffleArr(top);
 }
 
-async function searchTracks(q, year, allTracks, ignoreDecade) {
+async function searchTracks(q, year, allTracks, ignoreDecade, limit = 10) {
   try {
-    const r = await spotifyFetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=10&market=IL`);
+    const r = await spotifyFetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=${limit}&market=IL`);
     const data = await r.json();
     if (data.error) return;
     (data.tracks?.items || []).forEach(t => {
