@@ -357,7 +357,7 @@ io.on('connection', socket => {
     const room = getRoomOf(socket.id);
     if (!room || room.hostId !== socket.id) return;
     stopTimer(room);
-    Object.assign(room, { phase: 'lobby', songs: [], currentSongIdx: 0, currentSong: null, currentOptions: [], selectedGenres: [], selectedDecades: [], israeliMode: false, theme: 'default' });
+    Object.assign(room, { phase: 'lobby', songs: [], currentSongIdx: 0, currentSong: null, currentOptions: [], selectedGenres: [], selectedDecades: [], israeliMode: false });
     Object.values(room.players).forEach(p => { p.score = 0; p.pick = null; p.correct = null; p.finishPosition = null; });
     io.to(room.code).emit('back_to_lobby');
     broadcastRoom(room);
