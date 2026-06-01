@@ -1185,6 +1185,22 @@ async function hostStartGame() {
   const tok = sessionStorage.getItem('at');
   if (!tok) { showErr('lobbyErr','Not connected to Spotify — log in first'); return; }
   accessToken = tok;
+
+  // Verify token is still valid before starting
+  try {
+    const test = await spotifyFetch('https://api.spotify.com/v1/me');
+    if (test.status === 401) {
+      showErr('lobbyErr', 'Spotify session expired — please go back and log in again');
+      document.getElementById('startGameBtn').disabled = false;
+      document.getElementById('startGameBtn').textContent = 'Start Game ▶';
+      return;
+    }
+  } catch(e) {
+    showErr('lobbyErr', 'Cannot reach Spotify — check your connection');
+    document.getElementById('startGameBtn').disabled = false;
+    document.getElementById('startGameBtn').textContent = 'Start Game ▶';
+    return;
+  }
   document.getElementById('startGameBtn').disabled = true;
   document.getElementById('startGameBtn').textContent = 'Loading songs…';
   socket.emit('set_status', { status: 'loading' });
@@ -1295,6 +1311,7 @@ async function fetchRecommendations(genre, year, allTracks) {
   try {
     const params = new URLSearchParams({ seed_genres:seed, limit:10, market:'IL', target_popularity:70, min_popularity:40 });
     const r = await spotifyFetch(`https://api.spotify.com/v1/recommendations?${params}`);
+    if (!r || !r.ok) return;
     const data = await r.json();
     if (data.error) return;
     (data.tracks||[]).forEach(t => {
