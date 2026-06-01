@@ -40,13 +40,14 @@ app.get('/api/search', async (req, res) => {
 });
 
 // ── Constants ──────────────────────────────────────────────
-const POSITION_POINTS = [10, 8, 6, 4, 2, 1];
+const POSITION_POINTS = [10, 8, 6, 4, 2]; // position 6+ all get 1
 const EXTRA_DURATION  = 10;
 const DEFAULT_DURATION = 20;
 const DEFAULT_TILES    = 12;
 
 function getPoints(pos) {
-  return pos >= 1 ? (POSITION_POINTS[Math.min(pos - 1, POSITION_POINTS.length - 1)]) : 0;
+  if (pos < 1) return 0;
+  return pos <= POSITION_POINTS.length ? POSITION_POINTS[pos - 1] : 1;
 }
 
 // ── Helpers ────────────────────────────────────────────────
@@ -157,7 +158,7 @@ function broadcastRoom(room) {
 
 function resetRound(room) {
   Object.values(room.players).forEach(p => { p.pick = null; p.correct = null; p.finishPosition = null; });
-  room.correctCount = 0;
+  room.correctCount = 0; // always reset per round
 }
 
 // ── Timer ──────────────────────────────────────────────────
@@ -302,6 +303,25 @@ io.on('connection', socket => {
     const player = room.players[socket.id];
     if (!player) return;
     player.pick = optionIdx;
+
+    // Check if ALL players have now picked — end round early
+    const allPlayers = Object.values(room.players);
+    const allPicked = allPlayers.every(p => p.pick !== null);
+    if (allPicked && room.timerRunning) {
+      stopTimer(room);
+      io.to(room.code).emit('all_picked'); // signal clients to stop music
+      setTimeout(() => {
+        scorePicks(room);
+        const anyCorrect = allPlayers.some(p => p.correct === true);
+        if (anyCorrect) {
+          setTimeout(() => revealRound(room), 600);
+        } else {
+          room.phase = 'waiting_host';
+          io.to(room.code).emit('no_correct_guesses');
+          broadcastRoom(room);
+        }
+      }, 400);
+    }
   });
 
   socket.on('extra_time', () => {
