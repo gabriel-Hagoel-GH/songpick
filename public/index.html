@@ -1188,20 +1188,29 @@ async function hostStartGame() {
   document.getElementById('startGameBtn').disabled = true;
   document.getElementById('startGameBtn').textContent = 'Loading songs…';
   socket.emit('set_status', { status: 'loading' });
-  const songs = await fetchSongs();
-  socket.emit('set_status', { status: 'ready' });
-  document.getElementById('startGameBtn').disabled = false;
-  document.getElementById('startGameBtn').textContent = 'Start Game ▶';
-  if (!songs.length) { showErr('lobbyErr','No songs found — try different filters'); return; }
-  currentSongs = songs;
-  // Strip albumArt from songs sent to server (reduces payload size significantly)
-  // albumArt is only needed for reveal, which the host reconstructs from currentSongs
-  const songsForServer = songs.map(s => ({
-    id: s.id, title: s.title, artist: s.artist, uri: s.uri,
-    releaseYear: s.releaseYear, durationMs: s.durationMs,
-    popularity: s.popularity, lang: s.lang, albumArt: s.albumArt
-  }));
-  socket.emit('songs_ready', { songs: songsForServer });
+  try {
+    const songs = await fetchSongs();
+    socket.emit('set_status', { status: 'ready' });
+    document.getElementById('startGameBtn').disabled = false;
+    document.getElementById('startGameBtn').textContent = 'Start Game ▶';
+    if (!songs || !songs.length) {
+      showErr('lobbyErr','No songs found — try different genres or decades');
+      return;
+    }
+    currentSongs = songs;
+    const songsForServer = songs.map(s => ({
+      id: s.id, title: s.title, artist: s.artist, uri: s.uri,
+      releaseYear: s.releaseYear, durationMs: s.durationMs,
+      popularity: s.popularity, lang: s.lang, albumArt: s.albumArt
+    }));
+    socket.emit('songs_ready', { songs: songsForServer });
+  } catch(err) {
+    console.error('hostStartGame error:', err);
+    socket.emit('set_status', { status: 'ready' });
+    document.getElementById('startGameBtn').disabled = false;
+    document.getElementById('startGameBtn').textContent = 'Start Game ▶';
+    showErr('lobbyErr', 'Error: ' + (err.message || 'Could not load songs. Check console.'));
+  }
 }
 
 async function fetchSongs() {
@@ -1265,16 +1274,20 @@ async function fetchSongs() {
 
 async function searchTracks(q, year, allTracks, ignoreDecade, limit = 10) {
   try {
-    const r = await spotifyFetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=${limit}&market=IL`);
+    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=${limit}&market=IL`;
+    const r = await spotifyFetch(url);
+    if (!r || !r.ok) { console.warn(`searchTracks failed (${r?.status}): ${q}`); return; }
     const data = await r.json();
-    if (data.error) return;
+    if (data.error) { console.warn('Spotify error for query:', q, data.error); return; }
+    const before = allTracks.length;
     (data.tracks?.items || []).forEach(t => {
       const ry = parseInt((t.album?.release_date||'0000').slice(0,4));
       if ((ignoreDecade || (ry >= year && ry <= year+9)) && !allTracks.find(x=>x.id===t.id)) {
         allTracks.push({ title:t.name, artist:t.artists.map(a=>a.name).join(', '), uri:t.uri, id:t.id, popularity:t.popularity||0, albumArt:t.album?.images?.[0]?.url||'', releaseYear:ry, durationMs:t.duration_ms||180000, lang: israeliMode ? 'he' : 'en' });
       }
     });
-  } catch {}
+    console.log(`"${q}" → ${allTracks.length - before} new tracks (total: ${allTracks.length})`);
+  } catch(e) { console.warn('searchTracks exception:', q, e.message); }
 }
 
 async function fetchRecommendations(genre, year, allTracks) {
