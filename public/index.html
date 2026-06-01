@@ -1180,53 +1180,63 @@ function renderPlayerLobbyList(players) {
 
 // ── Fetch Songs ────────────────────────────────────────────
 async function hostStartGame() {
+  const btn = document.getElementById('startGameBtn');
+  const errEl = document.getElementById('lobbyErr');
+
+  // Step 1: validate selections
   if (!selectedGenres.length && !israeliMode) { showErr('lobbyErr','Select at least one genre'); return; }
   if (!selectedDecades.length) { showErr('lobbyErr','Select at least one decade'); return; }
+
+  // Step 2: check token
   const tok = sessionStorage.getItem('at');
-  if (!tok) { showErr('lobbyErr','Not connected to Spotify — log in first'); return; }
+  if (!tok) { showErr('lobbyErr','Not connected to Spotify — go back and log in'); return; }
   accessToken = tok;
 
-  // Verify token is still valid before starting
+  btn.disabled = true; btn.textContent = 'Checking Spotify…';
+  errEl.textContent = '';
+
+  // Step 3: verify token with Spotify
+  let meRes;
   try {
-    const test = await spotifyFetch('https://api.spotify.com/v1/me');
-    if (test.status === 401) {
-      showErr('lobbyErr', 'Spotify session expired — please go back and log in again');
-      document.getElementById('startGameBtn').disabled = false;
-      document.getElementById('startGameBtn').textContent = 'Start Game ▶';
-      return;
-    }
+    meRes = await spotifyFetch('https://api.spotify.com/v1/me');
   } catch(e) {
-    showErr('lobbyErr', 'Cannot reach Spotify — check your connection');
-    document.getElementById('startGameBtn').disabled = false;
-    document.getElementById('startGameBtn').textContent = 'Start Game ▶';
+    btn.disabled = false; btn.textContent = 'Start Game ▶';
+    showErr('lobbyErr', '❌ Network error reaching Spotify: ' + e.message); return;
+  }
+  if (!meRes.ok) {
+    btn.disabled = false; btn.textContent = 'Start Game ▶';
+    showErr('lobbyErr', `❌ Spotify auth failed (${meRes.status}) — go back and log in again`); return;
+  }
+
+  // Step 4: fetch songs
+  btn.textContent = 'Fetching songs…';
+  socket.emit('set_status', { status: 'loading' });
+
+  let songs = [];
+  try {
+    songs = await fetchSongs();
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Start Game ▶';
+    socket.emit('set_status', { status: 'ready' });
+    showErr('lobbyErr', '❌ fetchSongs crashed: ' + e.message); return;
+  }
+
+  socket.emit('set_status', { status: 'ready' });
+  btn.disabled = false; btn.textContent = 'Start Game ▶';
+
+  if (!songs || songs.length === 0) {
+    showErr('lobbyErr', `❌ 0 songs found. Genres: [${selectedGenres.join(',')}] Decades: [${selectedDecades.join(',')}] israeliMode: ${israeliMode}`);
     return;
   }
-  document.getElementById('startGameBtn').disabled = true;
-  document.getElementById('startGameBtn').textContent = 'Loading songs…';
-  socket.emit('set_status', { status: 'loading' });
-  try {
-    const songs = await fetchSongs();
-    socket.emit('set_status', { status: 'ready' });
-    document.getElementById('startGameBtn').disabled = false;
-    document.getElementById('startGameBtn').textContent = 'Start Game ▶';
-    if (!songs || !songs.length) {
-      showErr('lobbyErr','No songs found — try different genres or decades');
-      return;
-    }
-    currentSongs = songs;
-    const songsForServer = songs.map(s => ({
-      id: s.id, title: s.title, artist: s.artist, uri: s.uri,
-      releaseYear: s.releaseYear, durationMs: s.durationMs,
-      popularity: s.popularity, lang: s.lang, albumArt: s.albumArt
-    }));
-    socket.emit('songs_ready', { songs: songsForServer });
-  } catch(err) {
-    console.error('hostStartGame error:', err);
-    socket.emit('set_status', { status: 'ready' });
-    document.getElementById('startGameBtn').disabled = false;
-    document.getElementById('startGameBtn').textContent = 'Start Game ▶';
-    showErr('lobbyErr', 'Error: ' + (err.message || 'Could not load songs. Check console.'));
-  }
+
+  // Step 5: send to server
+  currentSongs = songs;
+  const songsForServer = songs.map(s => ({
+    id: s.id, title: s.title, artist: s.artist, uri: s.uri,
+    releaseYear: s.releaseYear, durationMs: s.durationMs,
+    popularity: s.popularity, lang: s.lang, albumArt: s.albumArt
+  }));
+  socket.emit('songs_ready', { songs: songsForServer });
 }
 
 async function fetchSongs() {
@@ -1620,7 +1630,7 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
   if (id==='sLobby' && !window._lobbyBuilt) { buildLobby(); window._lobbyBuilt=true; }
 }
-function showErr(id,msg) { const e=document.getElementById(id); if(!e)return; e.textContent=msg; setTimeout(()=>e.textContent='',3500); }
+function showErr(id,msg) { const e=document.getElementById(id); if(!e)return; e.textContent=msg; setTimeout(()=>e.textContent='',10000); }
 function showLoading(msg) { document.getElementById('loadingMsg').textContent=msg; document.getElementById('loadingOverlay').classList.add('show'); }
 function hideLoading()    { document.getElementById('loadingOverlay').classList.remove('show'); }
 let toastTimer=null;
