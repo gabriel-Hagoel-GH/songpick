@@ -28,7 +28,7 @@ app.get('/api/search', async (req, res) => {
   const room = rooms[roomCode.toUpperCase()];
   if (!room || !room.spotifyToken) return res.json({ items: [] });
   try {
-    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=${type}&limit=6&market=IL`;
+    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=${type}&limit=6`;
     const r = await fetch(url, { headers: { Authorization: 'Bearer ' + room.spotifyToken } });
     if (!r.ok) return res.json({ items: [] });
     const data = await r.json();
@@ -357,7 +357,7 @@ io.on('connection', socket => {
     const room = getRoomOf(socket.id);
     if (!room || room.hostId !== socket.id) return;
     stopTimer(room);
-    Object.assign(room, { phase: 'lobby', songs: [], currentSongIdx: 0, currentSong: null, currentOptions: [], selectedGenres: [], selectedDecades: [], israeliMode: false });
+    Object.assign(room, { phase: 'lobby', songs: [], currentSongIdx: 0, currentSong: null, currentOptions: [], selectedGenres: [], selectedDecades: [], israeliMode: false, theme: 'default' });
     Object.values(room.players).forEach(p => { p.score = 0; p.pick = null; p.correct = null; p.finishPosition = null; });
     io.to(room.code).emit('back_to_lobby');
     broadcastRoom(room);
