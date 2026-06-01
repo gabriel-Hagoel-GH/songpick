@@ -330,7 +330,7 @@ input::placeholder{color:var(--muted)}
 </head>
 <body>
 <div id="toast"></div>
-<div id="loadingOverlay">
+<div id="loadingOverlay" style="display:none;position:absolute;inset:0;background:rgba(10,10,15,.88);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:1rem">
   <div class="spinner"></div>
   <p style="color:var(--muted);font-size:.82rem" id="loadingMsg">Loading…</p>
 </div>
@@ -878,6 +878,7 @@ function connectSocket() {
       document.getElementById('hostWave').classList.add('off');
       document.getElementById('hostStatusPill').textContent = 'Everyone picked — calculating…';
       document.getElementById('hostStatusPill').className = 'pill amber';
+      document.querySelectorAll('#hostTileGrid .tile').forEach(t => t.classList.add('disabled'));
     } else {
       disableTiles();
       document.getElementById('playerWave').classList.add('off');
@@ -1198,6 +1199,15 @@ async function fetchSongs() {
       }
     }
     await Promise.all(promises);
+    // Fallback: if pool too small, search without year filter
+    if (allTracks.length < 20 && !israeliMode) {
+      const fallback = [];
+      for (const genre of selectedGenres) {
+        const queries = GENRE_QUERIES[genre] || [genre];
+        queries.slice(0,2).forEach(q => fallback.push(searchTracks(q, 0, allTracks, true)));
+      }
+      await Promise.all(fallback);
+    }
   }
   const fresh = allTracks.filter(t => !playedIds.has(t.id));
   const shuffled = shuffleArr(fresh);
@@ -1213,7 +1223,7 @@ async function fetchSongs() {
 
 async function searchTracks(q, year, allTracks, ignoreDecade, limit = 10) {
   try {
-    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=${limit}&market=IL`;
+    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=${limit}`;
     const r = await spotifyFetch(url);
     if (!r || !r.ok) { console.warn(`searchTracks failed (${r?.status}): ${q}`); return; }
     const data = await r.json();
@@ -1232,7 +1242,7 @@ async function searchTracks(q, year, allTracks, ignoreDecade, limit = 10) {
 async function fetchRecommendations(genre, year, allTracks) {
   const seed = GENRE_SEEDS[genre]; if (!seed) return;
   try {
-    const params = new URLSearchParams({ seed_genres:seed, limit:10, market:'IL', target_popularity:70, min_popularity:40 });
+    const params = new URLSearchParams({ seed_genres:seed, limit:10, target_popularity:70, min_popularity:40 });
     const r = await spotifyFetch(`https://api.spotify.com/v1/recommendations?${params}`);
     if (!r || !r.ok) return;
     const data = await r.json();
@@ -1402,7 +1412,8 @@ function onTilePick(idx) {
 }
 
 function highlightTiles(correctIdx) {
-  document.querySelectorAll('#playerTileGrid .tile').forEach((t, i) => {
+  const selector = isHost ? '#hostTileGrid .tile' : '#playerTileGrid .tile';
+  document.querySelectorAll(selector).forEach((t, i) => {
     t.classList.remove('selected');
     t.classList.add('disabled');
     if (i === correctIdx) { t.classList.add('correct'); }
