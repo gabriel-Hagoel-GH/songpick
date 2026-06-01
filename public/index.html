@@ -1125,24 +1125,8 @@ async function hostStartGame() {
   if (!tok) { showErr('lobbyErr','Not connected to Spotify — go back and log in'); return; }
   accessToken = tok;
 
-  btn.disabled = true; btn.textContent = 'Checking Spotify…';
+  btn.disabled = true; btn.textContent = 'Fetching songs…';
   errEl.textContent = '';
-
-  // Step 3: verify token with Spotify
-  let meRes;
-  try {
-    meRes = await spotifyFetch('https://api.spotify.com/v1/me');
-  } catch(e) {
-    btn.disabled = false; btn.textContent = 'Start Game ▶';
-    showErr('lobbyErr', '❌ Network error reaching Spotify: ' + e.message); return;
-  }
-  if (!meRes.ok) {
-    btn.disabled = false; btn.textContent = 'Start Game ▶';
-    showErr('lobbyErr', `❌ Spotify auth failed (${meRes.status}) — go back and log in again`); return;
-  }
-
-  // Step 4: fetch songs
-  btn.textContent = 'Fetching songs…';
   socket.emit('set_status', { status: 'loading' });
 
   let songs = [];
