@@ -1005,6 +1005,12 @@ function connectSocket() {
   socket.on('game_over',    ({ players }) => { stopClientTimer(); spotifyPause(); showGameOver(players); });
   socket.on('back_to_lobby', () => { playedIds = new Set(); currentSongs = []; selectedGenres = []; selectedDecades = []; israeliMode = false; window._lobbyBuilt = false; showScreen(isHost ? 'sLobby' : 'sPlayerLobby'); });
   socket.on('host_left',    () => { showToast('Host left the game'); leaveRoom(); });
+  socket.on('songs_error', msg => {
+    hideLoading();
+    document.getElementById('startGameBtn').disabled = false;
+    document.getElementById('startGameBtn').textContent = 'Start Game ▶';
+    showErr('lobbyErr', '⚠️ ' + msg);
+  });
   socket.on('host_status',  ({ status }) => {
     if (!isHost) {
       const el = document.getElementById('playerLobbyStatus');
@@ -1242,12 +1248,14 @@ async function fetchSongs() {
     await Promise.all(promises);
   }
   const fresh = allTracks.filter(t => !playedIds.has(t.id));
-  // Shuffle first so same-popularity songs don't always appear in same order
   const shuffled = shuffleArr(fresh);
-  // Then sort by popularity but with noise to add variety
   shuffled.sort((a,b) => (b.popularity + Math.random()*15) - (a.popularity + Math.random()*15));
   const top = shuffled.slice(0, 120);
-  console.log(`Song pool: ${top.length} tracks`);
+  console.log(`Song pool: ${top.length} tracks (${top.filter(t=>t.lang==='he').length} Hebrew, ${top.filter(t=>t.lang!=='he').length} English)`);
+  if (top.length < tileCount) {
+    showErr('lobbyErr', `⚠️ Only ${top.length} songs found — need at least ${tileCount}. Try adding more genres or decades.`);
+    return [];
+  }
   return shuffleArr(top);
 }
 
