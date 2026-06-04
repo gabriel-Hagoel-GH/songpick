@@ -587,8 +587,8 @@ input::placeholder{color:var(--muted)}
       <div class="rartist" id="revealArtist"></div>
     </div>
 
-    <a id="spotifyLink" href="#" target="_blank" class="btn sec sm"
-      style="margin-bottom:.6rem;text-decoration:none;width:auto">Open in Spotify ↗</a>
+    <button id="spotifyLink" class="btn sec sm"
+      style="margin-bottom:.6rem;width:auto" onclick="openSpotifyLink()">Open in Spotify ↗</button>
 
     <div class="divider"></div>
     <span class="lbl" style="margin:.35rem 0">Scoreboard</span>
@@ -1291,6 +1291,10 @@ async function hostPlayClip() {
   socket.emit('song_playing');
 }
 
+function openSpotifyLink() {
+  const href = document.getElementById('spotifyLink').dataset.href;
+  if (href) window.open(href, '_blank', 'noopener');
+}
 function hostExtraTime()    { document.getElementById('hostDecision').style.display='none'; socket.emit('extra_time'); }
 function hostForceReveal()  { socket.emit('force_reveal'); }
 function hostNextSong()     { spotifyPause(); socket.emit('next_song'); }
@@ -1473,7 +1477,7 @@ function showReveal(song, players, isLast) {
   document.getElementById('revealSub').textContent  = song.releaseYear ? `${song.releaseYear}` : '';
   document.getElementById('revealSong').textContent   = song.title;
   document.getElementById('revealArtist').textContent = song.artist;
-  document.getElementById('spotifyLink').href = `https://open.spotify.com/track/${song.id}`;
+  document.getElementById('spotifyLink').dataset.href = `https://open.spotify.com/track/${song.id}`;
   if (song.albumArt) { document.getElementById('revealImg').src = song.albumArt; document.getElementById('revealArt').style.display='block'; }
   else document.getElementById('revealArt').style.display='none';
 
@@ -1578,7 +1582,15 @@ window._lobbyBuilt = false;
 
 // ── Enter key shortcuts ────────────────────────────────────
 document.getElementById('codeInput').addEventListener('keydown', e => { if(e.key==='Enter') joinRoom(); });
-window.addEventListener('popstate', () => { if(socket){socket.disconnect();socket=null;} stopClientTimer(); showScreen('sHome'); });
+window.addEventListener('popstate', (e) => {
+  // Only disconnect on real navigation (not # anchor clicks or Spotify return)
+  // Check if we're still on the same page
+  if (window.location.pathname === '/' && !window.location.search) {
+    if(socket){socket.disconnect();socket=null;}
+    stopClientTimer();
+    showScreen('sHome');
+  }
+});
 </script>
 </body>
 </html>
