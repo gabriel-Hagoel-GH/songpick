@@ -239,7 +239,7 @@ io.on('connection', socket => {
 
     if (room.phase !== 'lobby') {
       // Late join — send current game state so they can play from here
-      socket.emit('game_start', { roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount, theme: room.theme });
+      socket.emit('game_start', { roundCount: room.roundCount, options: room.currentOptions, roundDuration: room.roundDuration, tileCount: room.tileCount, theme: room.theme, lateJoin: true, phase: room.phase });
     }
 
     broadcastRoom(room);
@@ -357,7 +357,7 @@ io.on('connection', socket => {
     const room = getRoomOf(socket.id);
     if (!room || room.hostId !== socket.id) return;
     stopTimer(room);
-    Object.assign(room, { phase: 'lobby', songs: [], currentSongIdx: 0, currentSong: null, currentOptions: [], selectedGenres: [], selectedDecades: [], israeliMode: false });
+    Object.assign(room, { phase: 'lobby', songs: [], currentSongIdx: 0, currentSong: null, currentOptions: [], selectedGenres: [], selectedDecades: [], israeliMode: false, theme: 'default', tileCount: DEFAULT_TILES, roundDuration: DEFAULT_DURATION });
     Object.values(room.players).forEach(p => { p.score = 0; p.pick = null; p.correct = null; p.finishPosition = null; });
     io.to(room.code).emit('back_to_lobby');
     broadcastRoom(room);
