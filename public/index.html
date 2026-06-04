@@ -330,7 +330,7 @@ input::placeholder{color:var(--muted)}
 </head>
 <body>
 <div id="toast"></div>
-<div id="loadingOverlay" style="display:none">
+<div id="loadingOverlay">
   <div class="spinner"></div>
   <p style="color:var(--muted);font-size:.82rem" id="loadingMsg">Loading…</p>
 </div>
@@ -784,26 +784,14 @@ async function spotifyFetch(url, options={}) {
   accessToken = sessionStorage.getItem('at') || accessToken;
   const headers = { Authorization: 'Bearer ' + accessToken };
   if (options.method && options.method !== 'GET') headers['Content-Type'] = 'application/json';
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 12000);
-  try {
-    let res = await fetch(url, { ...options, headers, signal: ctrl.signal });
-    clearTimeout(tid);
-    if (res.status === 401) {
-      await refreshAccessToken();
-      accessToken = sessionStorage.getItem('at') || accessToken;
-      headers.Authorization = 'Bearer ' + accessToken;
-      const ctrl2 = new AbortController();
-      const tid2 = setTimeout(() => ctrl2.abort(), 12000);
-      res = await fetch(url, { ...options, headers, signal: ctrl2.signal });
-      clearTimeout(tid2);
-    }
-    return res;
-  } catch(e) {
-    clearTimeout(tid);
-    if (e.name === 'AbortError') return null; // timed out — return null, caller handles it
-    throw e;
+  let res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    await refreshAccessToken();
+    accessToken = sessionStorage.getItem('at') || accessToken;
+    headers.Authorization = 'Bearer ' + accessToken;
+    res = await fetch(url, { ...options, headers });
   }
+  return res;
 }
 async function spotifyPlay(uri, positionMs) {
   return spotifyFetch('https://api.spotify.com/v1/me/player/play', {
@@ -852,25 +840,15 @@ function connectSocket() {
   socket.on('player_joined', ({ name }) => showToast(`${name} joined!`));
   socket.on('player_left',   ({ name }) => showToast(`${name} left`));
 
-  socket.on('game_start', ({ roundCount: rc, options, roundDuration: rd, tileCount: tc, theme: th, lateJoin, phase }) => {
+  socket.on('game_start', ({ roundCount: rc, options, roundDuration: rd, tileCount: tc, theme: th }) => {
     roundCount = rc;
     if (rd) roundDuration = rd;
     if (tc) tileCount = tc;
-    if (th) setTheme(th, true);
+    if (th) setTheme(th, true); // silent — from server
     currentSongIdx = 0;
     currentOptions = options;
     myPickIdx = null;
-    if (isHost) {
-      initHostGame();
-    } else {
-      initPlayerGame(options);
-      // If joining mid-round, enable tiles immediately
-      if (lateJoin && phase === 'playing') {
-        enableTiles();
-        document.getElementById('playerStatusPill').textContent = '🎵 Listen and pick!';
-        document.getElementById('playerStatusPill').className = 'pill green';
-      }
-    }
+    if (isHost) { initHostGame(); } else { initPlayerGame(options); }
   });
 
   socket.on('song_playing', () => {
@@ -967,7 +945,7 @@ function connectSocket() {
   });
 
   socket.on('game_over',    ({ players }) => { stopClientTimer(); spotifyPause(); showGameOver(players); });
-  socket.on('back_to_lobby', () => { playedIds = new Set(); currentSongs = []; selectedGenres = []; selectedDecades = []; israeliMode = false; roundDuration = 20; tileCount = 12; setTheme('default', true); window._lobbyBuilt = false; showScreen(isHost ? 'sLobby' : 'sPlayerLobby'); });
+  socket.on('back_to_lobby', () => { playedIds = new Set(); currentSongs = []; selectedGenres = []; selectedDecades = []; israeliMode = false; window._lobbyBuilt = false; showScreen(isHost ? 'sLobby' : 'sPlayerLobby'); });
   socket.on('host_left',    () => { showToast('Host left the game'); leaveRoom(); });
   socket.on('songs_error', msg => {
     hideLoading();
@@ -1179,7 +1157,6 @@ async function hostStartGame() {
 
 async function fetchSongs() {
   const allTracks = [];
-  const seenIds = new Set();
   if (israeliMode) {
     const promises = [];
     for (const decade of selectedDecades) {
@@ -1201,19 +1178,10 @@ async function fetchSongs() {
           promises.push(searchTracks(`${q} year:${year}-${year+9}`, year, allTracks, false));
           promises.push(searchTracks(`${q} year:${year}-${year+4}`, year, allTracks, false));
         });
-        if (GENRE_SEEDS[genre]) promises.push(fetchRecommendations(genre, year, allTracks, seenIds));
+        if (GENRE_SEEDS[genre]) promises.push(fetchRecommendations(genre, year, allTracks));
       }
     }
     await Promise.all(promises);
-    // Fallback: if pool is small, search again without year filter
-    if (allTracks.length < 30 && !israeliMode) {
-      const fallback = [];
-      for (const genre of selectedGenres) {
-        const qs = (GENRE_QUERIES[genre] || [genre]).slice(0, 2);
-        qs.forEach(q => fallback.push(searchTracks(q, 0, allTracks, true)));
-      }
-      await Promise.all(fallback);
-    }
   }
   const fresh = allTracks.filter(t => !playedIds.has(t.id));
   const shuffled = shuffleArr(fresh);
@@ -1231,22 +1199,21 @@ async function searchTracks(q, year, allTracks, ignoreDecade, limit = 10) {
   try {
     const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=${limit}`;
     const r = await spotifyFetch(url);
-    if (!r) { console.warn(`searchTracks timed out: ${q}`); return; }
-    if (!r.ok) { console.warn(`searchTracks failed (${r.status}): ${q}`); return; }
+    if (!r || !r.ok) { console.warn(`searchTracks failed (${r?.status}): ${q}`); return; }
     const data = await r.json();
     if (data.error) { console.warn('Spotify error for query:', q, data.error); return; }
     const before = allTracks.length;
     (data.tracks?.items || []).forEach(t => {
       const ry = parseInt((t.album?.release_date||'0000').slice(0,4));
-      if ((ignoreDecade || (ry >= year && ry <= year+9)) && !seenIds.has(t.id)) {
-        seenIds.add(t.id); allTracks.push({ title:t.name, artist:t.artists.map(a=>a.name).join(', '), uri:t.uri, id:t.id, popularity:t.popularity||0, albumArt:t.album?.images?.[0]?.url||'', releaseYear:ry, durationMs:t.duration_ms||180000, lang: israeliMode ? 'he' : 'en' });
+      if ((ignoreDecade || (ry >= year && ry <= year+9)) && !allTracks.find(x=>x.id===t.id)) {
+        allTracks.push({ title:t.name, artist:t.artists.map(a=>a.name).join(', '), uri:t.uri, id:t.id, popularity:t.popularity||0, albumArt:t.album?.images?.[0]?.url||'', releaseYear:ry, durationMs:t.duration_ms||180000, lang: israeliMode ? 'he' : 'en' });
       }
     });
     console.log(`"${q}" → ${allTracks.length - before} new tracks (total: ${allTracks.length})`);
   } catch(e) { console.warn('searchTracks exception:', q, e.message); }
 }
 
-async function fetchRecommendations(genre, year, allTracks, seenIds = new Set()) {
+async function fetchRecommendations(genre, year, allTracks) {
   const seed = GENRE_SEEDS[genre]; if (!seed) return;
   try {
     const params = new URLSearchParams({ seed_genres:seed, limit:10, target_popularity:70, min_popularity:40 });
@@ -1256,7 +1223,7 @@ async function fetchRecommendations(genre, year, allTracks, seenIds = new Set())
     if (data.error) return;
     (data.tracks||[]).forEach(t => {
       const ry = parseInt((t.album?.release_date||'0000').slice(0,4));
-      if (ry>=year && ry<=year+9 && !seenIds.has(t.id)) { seenIds.add(t.id);
+      if (ry>=year && ry<=year+9 && !allTracks.find(x=>x.id===t.id)) {
         allTracks.push({ title:t.name, artist:t.artists.map(a=>a.name).join(', '), uri:t.uri, id:t.id, popularity:t.popularity||0, albumArt:t.album?.images?.[0]?.url||'', releaseYear:ry, durationMs:t.duration_ms||180000, lang: israeliMode ? 'he' : 'en' });
       }
     });
@@ -1419,8 +1386,7 @@ function onTilePick(idx) {
 }
 
 function highlightTiles(correctIdx) {
-  const sel = isHost ? '#hostTileGrid .tile' : '#playerTileGrid .tile';
-  document.querySelectorAll(sel).forEach((t, i) => {
+  document.querySelectorAll('#playerTileGrid .tile').forEach((t, i) => {
     t.classList.remove('selected');
     t.classList.add('disabled');
     if (i === correctIdx) { t.classList.add('correct'); }
