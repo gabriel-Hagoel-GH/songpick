@@ -726,7 +726,7 @@ function buildThemePicker() {
     grid.appendChild(card);
   });
 }
-let timerDuration = ROUND_DURATION;
+let revealTimeout = null; // track reveal animation timeout so it can be cancelled
 
 // ── PKCE Auth ──────────────────────────────────────────────
 function generateRandom(len) {
@@ -932,7 +932,7 @@ function connectSocket() {
     spotifyPause();
     if (song?.id) playedIds.add(song.id);
     highlightTiles(correctIdx);
-    setTimeout(() => showReveal(song, players, isLast), 900);
+    revealTimeout = setTimeout(() => showReveal(song, players, isLast), 900);
   });
 
   socket.on('next_song', ({ songIdx, roundCount: rc, options, roundDuration: rd, tileCount: tc }) => {
@@ -946,7 +946,7 @@ function connectSocket() {
   });
 
   socket.on('game_over',    ({ players }) => { stopClientTimer(); spotifyPause(); showGameOver(players); });
-  socket.on('back_to_lobby', () => { playedIds = new Set(); currentSongs = []; selectedGenres = []; selectedDecades = []; israeliMode = false; window._lobbyBuilt = false; showScreen(isHost ? 'sLobby' : 'sPlayerLobby'); });
+  socket.on('back_to_lobby', () => { playedIds = new Set(); currentSongs = []; currentSongIdx = 0; myPickIdx = null; selectedGenres = []; selectedDecades = []; israeliMode = false; window._lobbyBuilt = false; showScreen(isHost ? 'sLobby' : 'sPlayerLobby'); });
   socket.on('host_left',    () => { showToast('Host left the game'); leaveRoom(); });
   socket.on('songs_error', msg => {
     hideLoading();
@@ -1234,6 +1234,7 @@ async function fetchRecommendations(genre, year, allTracks) {
 // ── Host Game ──────────────────────────────────────────────
 function initHostGame() {
   stopClientTimer();
+  if (revealTimeout) { clearTimeout(revealTimeout); revealTimeout = null; }
   showScreen('sHostGame');
   document.getElementById('hostSongCounter').textContent = `Song ${currentSongIdx+1} of ${roundCount}`;
   document.getElementById('hostGenreInfo').textContent = (israeliMode?'🇮🇱 ':'')+selectedGenres.join(', ');
@@ -1260,7 +1261,16 @@ async function hostPlayClip() {
   document.getElementById('hostWave').classList.remove('off');
 
   const posMs = playPosition === 'middle' ? Math.floor((song.durationMs || 180000) / 2) : 0;
-  const res = await spotifyPlay(song.uri, posMs);
+  let res;
+  try {
+    res = await spotifyPlay(song.uri, posMs);
+  } catch(e) {
+    showToast('Spotify error: ' + e.message);
+    document.getElementById('hostPlayBtn').disabled = false;
+    document.getElementById('hostPlayBtn').textContent = '▶ Play Song';
+    document.getElementById('hostWave').classList.add('off');
+    return;
+  }
 
   if (res && res.status === 404) {
     document.getElementById('hostOpenSpotify').style.display = 'block';
@@ -1302,6 +1312,7 @@ function updateHostPlayerStatus(players) {
 // ── Player Game ────────────────────────────────────────────
 function initPlayerGame(options) {
   stopClientTimer();
+  if (revealTimeout) { clearTimeout(revealTimeout); revealTimeout = null; } // cancel any pending reveal
   showScreen('sPlayerGame');
   currentOptions = options;
   myPickIdx = null;
@@ -1387,7 +1398,8 @@ function onTilePick(idx) {
 }
 
 function highlightTiles(correctIdx) {
-  document.querySelectorAll('#playerTileGrid .tile').forEach((t, i) => {
+  const sel = isHost ? '#hostTileGrid .tile' : '#playerTileGrid .tile';
+  document.querySelectorAll(sel).forEach((t, i) => {
     t.classList.remove('selected');
     t.classList.add('disabled');
     if (i === correctIdx) { t.classList.add('correct'); }
