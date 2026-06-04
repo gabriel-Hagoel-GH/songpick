@@ -134,7 +134,7 @@ function makeRoom(hostId, hostName) {
     selectedGenres: [], selectedDecades: [], israeliMode: false,
     spotifyToken: null,
   };
-  rooms[code].players[hostId] = { name: hostName, score: 0, isHost: true, pick: null, correct: null, finishPosition: null };
+  rooms[code].players[hostId] = { name: hostName, score: 0, isHost: true, pick: null, correct: null, finishPosition: null, pickTime: null };
   return rooms[code];
 }
 
@@ -157,7 +157,7 @@ function broadcastRoom(room) {
 }
 
 function resetRound(room) {
-  Object.values(room.players).forEach(p => { p.pick = null; p.correct = null; p.finishPosition = null; });
+  Object.values(room.players).forEach(p => { p.pick = null; p.correct = null; p.finishPosition = null; p.pickTime = null; });
   room.correctCount = 0; // always reset per round
 }
 
@@ -189,8 +189,10 @@ function scorePicks(room) {
   const correctIdx = room.currentOptions.indexOf(correct);
   const players = Object.values(room.players); // host can pick too
 
-  // Score correct pickers — randomise order (all submitted at same moment)
-  const winners = shuffle(players.filter(p => p.pick === correctIdx));
+  // Score correct pickers — sort by pickTime (earliest first = highest points)
+  const winners = players
+    .filter(p => p.pick === correctIdx)
+    .sort((a, b) => (a.pickTime || 0) - (b.pickTime || 0));
   winners.forEach((p, i) => {
     p.correct = true;
     p.finishPosition = room.correctCount + i + 1;
@@ -244,7 +246,7 @@ io.on('connection', socket => {
     if (!room) { socket.emit('error', 'Room not found'); return; }
     if (Object.keys(room.players).length >= 12) { socket.emit('error', 'Room is full'); return; }
 
-    room.players[socket.id] = { name, score: 0, isHost: false, pick: null, correct: null, finishPosition: null };
+    room.players[socket.id] = { name, score: 0, isHost: false, pick: null, correct: null, finishPosition: null, pickTime: null };
     socket.join(code.toUpperCase());
     socket.emit('room_joined', { code: code.toUpperCase(), playerId: socket.id });
 
@@ -309,6 +311,7 @@ io.on('connection', socket => {
     const player = room.players[socket.id];
     if (!player) return;
     player.pick = optionIdx;
+    player.pickTime = Date.now(); // record when they picked
 
     // Check if ALL players have now picked — end round early
     const allPlayers = Object.values(room.players);
