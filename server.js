@@ -66,6 +66,16 @@ function buildOptions(correctSong, allSongs, tileCount) {
   const distractors = [];
   const correctLang = correctSong.lang || 'en';
 
+  // Deduplicate allSongs by normalized title+artist to prevent same song appearing twice
+  const seenTitles = new Set([`${correctSong.title.toLowerCase()}|${correctSong.artist.toLowerCase()}`]);
+  const dedupedSongs = allSongs.filter(s => {
+    const key = `${s.title.toLowerCase()}|${s.artist.toLowerCase()}`;
+    if (seenTitles.has(key)) return false;
+    seenTitles.add(key);
+    return true;
+  });
+  const allSongsDeduped = dedupedSongs;
+
   function tryAdd(song) {
     if (!song || used.has(song.id) || distractors.length >= TILES - 1) return;
     used.add(song.id);
@@ -73,8 +83,8 @@ function buildOptions(correctSong, allSongs, tileCount) {
   }
 
   // Same-language pool first
-  const sameLangPool = allSongs.filter(s => s.id !== correctSong.id && (s.lang || 'en') === correctLang);
-  const fullPool     = allSongs.filter(s => s.id !== correctSong.id);
+  const sameLangPool = allSongsDeduped.filter(s => s.id !== correctSong.id && (s.lang || 'en') === correctLang);
+  const fullPool     = allSongsDeduped.filter(s => s.id !== correctSong.id);
   const pool = sameLangPool.length >= TILES - 1 ? sameLangPool : fullPool; // fall back if too few
 
   const correctDecade = Math.floor((correctSong.releaseYear || 2000) / 10) * 10;
