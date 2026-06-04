@@ -785,7 +785,7 @@ async function spotifyFetch(url, options={}) {
   const headers = { Authorization: 'Bearer ' + accessToken };
   if (options.method && options.method !== 'GET') headers['Content-Type'] = 'application/json';
   const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 8000);
+  const tid = setTimeout(() => ctrl.abort(), 12000);
   try {
     let res = await fetch(url, { ...options, headers, signal: ctrl.signal });
     clearTimeout(tid);
@@ -794,13 +794,14 @@ async function spotifyFetch(url, options={}) {
       accessToken = sessionStorage.getItem('at') || accessToken;
       headers.Authorization = 'Bearer ' + accessToken;
       const ctrl2 = new AbortController();
-      const tid2 = setTimeout(() => ctrl2.abort(), 8000);
+      const tid2 = setTimeout(() => ctrl2.abort(), 12000);
       res = await fetch(url, { ...options, headers, signal: ctrl2.signal });
       clearTimeout(tid2);
     }
     return res;
   } catch(e) {
     clearTimeout(tid);
+    if (e.name === 'AbortError') return null; // timed out — return null, caller handles it
     throw e;
   }
 }
@@ -1200,7 +1201,7 @@ async function fetchSongs() {
           promises.push(searchTracks(`${q} year:${year}-${year+9}`, year, allTracks, false));
           promises.push(searchTracks(`${q} year:${year}-${year+4}`, year, allTracks, false));
         });
-        if (GENRE_SEEDS[genre]) promises.push(fetchRecommendations(genre, year, allTracks));
+        if (GENRE_SEEDS[genre]) promises.push(fetchRecommendations(genre, year, allTracks, seenIds));
       }
     }
     await Promise.all(promises);
@@ -1230,7 +1231,8 @@ async function searchTracks(q, year, allTracks, ignoreDecade, limit = 10) {
   try {
     const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=${limit}`;
     const r = await spotifyFetch(url);
-    if (!r || !r.ok) { console.warn(`searchTracks failed (${r?.status}): ${q}`); return; }
+    if (!r) { console.warn(`searchTracks timed out: ${q}`); return; }
+    if (!r.ok) { console.warn(`searchTracks failed (${r.status}): ${q}`); return; }
     const data = await r.json();
     if (data.error) { console.warn('Spotify error for query:', q, data.error); return; }
     const before = allTracks.length;
@@ -1244,7 +1246,7 @@ async function searchTracks(q, year, allTracks, ignoreDecade, limit = 10) {
   } catch(e) { console.warn('searchTracks exception:', q, e.message); }
 }
 
-async function fetchRecommendations(genre, year, allTracks) {
+async function fetchRecommendations(genre, year, allTracks, seenIds = new Set()) {
   const seed = GENRE_SEEDS[genre]; if (!seed) return;
   try {
     const params = new URLSearchParams({ seed_genres:seed, limit:10, target_popularity:70, min_popularity:40 });
