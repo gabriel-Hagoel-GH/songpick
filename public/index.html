@@ -628,7 +628,7 @@ const CLIENT_ID   = '343ddfcdf3ef445697e55ff537a2c18a';
 const REDIRECT_URI = window.location.origin + '/';
 const SCOPES = 'user-read-email user-read-private user-modify-playback-state user-read-playback-state';
 
-const GENRES = ['Pop','Rock','Hip-Hop','R&B','Electronic','Latin','Disney','Movie Hits','Viral Hits','One Hit Wonders'];
+const GENRES = ['Pop','Rock','Hip-Hop','R&B','Electronic','Latin','Disney','Movie Hits','Musicals','Viral Hits','One Hit Wonders'];
 const GENRE_QUERIES = {
   'Pop':['pop hits','pop music','top pop','pop chart','pop songs'],
   'Rock':['rock hits','classic rock','rock songs','rock band','rock music'],
@@ -640,20 +640,12 @@ const GENRE_QUERIES = {
   'Movie Hits':['movie soundtrack','film music','movie songs','cinema hits','best movie songs'],
   'Viral Hits':['viral songs','tiktok hits','trending songs','viral music','internet hits'],
   'One Hit Wonders':['one hit wonder','one hit wonders','novelty song','forgotten hits','one hit'],
+  'Musicals':['broadway musical songs','west end musical','musical theatre hits','broadway cast recording','famous musicals soundtrack','hamilton musical','les miserables musical','phantom opera musical','wicked musical','mamma mia musical'],
 };
 const GENRE_SEEDS = {
   'Pop':'pop','Rock':'rock','Hip-Hop':'hip-hop','R&B':'r-n-b',
   'Electronic':'electronic','Latin':'latin',
-  'Disney':null,'Movie Hits':null,'Viral Hits':null,'One Hit Wonders':null
-};
-const ISRAELI_HITS = {
-  '1960s':['Israeli music 1960','Yehoram Gaon','Naomi Shemer','Arik Einstein 1960'],
-  '1970s':['Israeli music 1970','Shlomo Artzi','Arik Einstein','Kaveret band'],
-  '1980s':['Israeli music 1980','Ofra Haza','Rita Israeli','Zohar Argov'],
-  '1990s':['Israeli music 1990','Sarit Hadad','Eyal Golan','Idan Raichel'],
-  '2000s':['Israeli music 2000','Idan Raichel Project','Ninet Tayeb','Moshe Peretz'],
-  '2010s':['Israeli music 2010','Omer Adam','Noa Kirel','Asaf Avidan'],
-  '2020s':['Israeli music 2020','Noa Kirel','Omer Adam','Natan Goshen'],
+  'Disney':null,'Movie Hits':null,'Musicals':null,'Viral Hits':null,'One Hit Wonders':null
 };
 const DECADES = ['1960s','1970s','1980s','1990s','2000s','2010s','2020s'];
 const MEDALS  = ['🥇','🥈','🥉'];
@@ -1001,7 +993,7 @@ function toggleAcc(name) {
 function updateSummaries() {
   // Genre
   const gEl = document.getElementById('summGenre');
-  const gLabel = [...selectedGenres, ...(israeliMode ? ['🇮🇱 Israeli Hits'] : [])];
+  const gLabel = [...selectedGenres];
   gEl.textContent = gLabel.length ? gLabel.join(', ') : 'Tap to select';
   gEl.className = 'acc-sub' + (gLabel.length ? '' : ' empty');
 
@@ -1030,13 +1022,7 @@ function buildLobby() {
     };
     gg.appendChild(b);
   });
-  const il = document.createElement('button');
-  il.className = 'pick'; il.textContent = '🇮🇱 Israeli Hits'; il.style.gridColumn = '1/-1';
-  il.onclick = () => {
-    il.classList.toggle('on'); israeliMode = il.classList.contains('on');
-    updateSummaries(); sendConfig();
-  };
-  gg.appendChild(il);
+
 
   const dg = document.getElementById('decadeGrid'); dg.innerHTML = '';
   DECADES.forEach(d => {
@@ -1117,7 +1103,7 @@ async function hostStartGame() {
   const errEl = document.getElementById('lobbyErr');
 
   // Step 1: validate selections
-  if (!selectedGenres.length && !israeliMode) { showErr('lobbyErr','Select at least one genre'); return; }
+  if (!selectedGenres.length) { showErr('lobbyErr','Select at least one genre'); return; }
   if (!selectedDecades.length) { showErr('lobbyErr','Select at least one decade'); return; }
 
   // Step 2: check token
@@ -1158,32 +1144,19 @@ async function hostStartGame() {
 
 async function fetchSongs() {
   const allTracks = [];
-  if (israeliMode) {
-    const promises = [];
-    for (const decade of selectedDecades) {
-      const year = parseInt(decade);
-      const queries = ISRAELI_HITS[decade] || ['Israeli music ' + year];
+  const promises = [];
+  for (const decade of selectedDecades) {
+    const year = parseInt(decade);
+    for (const genre of selectedGenres) {
+      const queries = GENRE_QUERIES[genre] || [genre];
       queries.forEach(q => {
-        promises.push(searchTracks(q, year, allTracks, false, 20));
-        promises.push(searchTracks(q, year, allTracks, true, 20));
+        promises.push(searchTracks(`${q} year:${year}-${year+9}`, year, allTracks, false));
+        promises.push(searchTracks(`${q} year:${year}-${year+4}`, year, allTracks, false));
       });
+      if (GENRE_SEEDS[genre]) promises.push(fetchRecommendations(genre, year, allTracks));
     }
-    await Promise.all(promises);
-  } else {
-    const promises = [];
-    for (const decade of selectedDecades) {
-      const year = parseInt(decade);
-      for (const genre of selectedGenres) {
-        const queries = GENRE_QUERIES[genre] || [genre];
-        queries.forEach(q => {
-          promises.push(searchTracks(`${q} year:${year}-${year+9}`, year, allTracks, false));
-          promises.push(searchTracks(`${q} year:${year}-${year+4}`, year, allTracks, false));
-        });
-        if (GENRE_SEEDS[genre]) promises.push(fetchRecommendations(genre, year, allTracks));
-      }
-    }
-    await Promise.all(promises);
   }
+  await Promise.all(promises);
   const fresh = allTracks.filter(t => !playedIds.has(t.id));
   const shuffled = shuffleArr(fresh);
   shuffled.sort((a,b) => (b.popularity + Math.random()*15) - (a.popularity + Math.random()*15));
@@ -1237,7 +1210,7 @@ function initHostGame() {
   if (revealTimeout) { clearTimeout(revealTimeout); revealTimeout = null; }
   showScreen('sHostGame');
   document.getElementById('hostSongCounter').textContent = `Song ${currentSongIdx+1} of ${roundCount}`;
-  document.getElementById('hostGenreInfo').textContent = (israeliMode?'🇮🇱 ':'')+selectedGenres.join(', ');
+  document.getElementById('hostGenreInfo').textContent = selectedGenres.join(', ');
   document.getElementById('hostGameCode').textContent = `Room: ${roomCode}`;
   document.getElementById('hostPlayBtn').disabled = false;
   document.getElementById('hostPlayBtn').style.display = 'block';
